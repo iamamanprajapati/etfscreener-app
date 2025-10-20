@@ -840,7 +840,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
-    minHeight: 120, // Increased height for LARGE_BANNER
+    // Let AdMob handle its own sizing
   },
 });
 

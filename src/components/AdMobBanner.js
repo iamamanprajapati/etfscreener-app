@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 8,
-    minHeight: 120, // Increased height for LARGE_BANNER
+    // Let AdMob handle its own sizing
   },
 });
 
