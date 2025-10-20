@@ -14,16 +14,19 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useWatchlist } from '../contexts/WatchlistContext';
+import { useAuth } from '../contexts/AuthContext';
 import { cacheUtils } from '../utils/cache';
 import { SUMMARY_API_URL, PRICES_API_URL, parseNumber, formatters } from '../utils/helpers';
 import { getDisplaySymbol } from '../utils/symbolUtils';
 import { useTheme } from '../contexts/ThemeContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/LoadingSpinner';
+import GoogleSignInComponent from '../components/GoogleSignIn';
 
 const WatchlistScreen = () => {
   const navigation = useNavigation();
   const { colors } = useTheme();
+  const { user, loading: authLoading, signInWithGoogle, logout } = useAuth();
   const { 
     watchlist, 
     loading: watchlistLoading, 
@@ -297,6 +300,15 @@ const WatchlistScreen = () => {
     navigation.navigate('ETFDetail', { symbol });
   }, [navigation]);
 
+  // Authentication handlers
+  const handleGoogleSignIn = useCallback(async (userInfo) => {
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      console.error('Error signing in:', error);
+    }
+  }, [signInWithGoogle]);
+
   // Get visible columns only
   const visibleColumns = useMemo(() => {
     return COLUMNS.filter(col => !col.hidden);
@@ -322,12 +334,22 @@ const WatchlistScreen = () => {
     return Math.max(minHeight, Math.min(maxHeight, calculatedHeight));
   }, [processedWatchlistData.length]);
 
-  const filteredETFs = etfData
-    .filter(etf => 
-      !isInWatchlist(etf.symbol) && 
-      getDisplaySymbol(etf.symbol).toLowerCase().includes(searchQuery.toLowerCase())
-    )
-    .slice(0, 10);
+  const filteredETFs = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return etfData
+        .filter(etf => !isInWatchlist(etf.symbol));
+    }
+    
+    const query = searchQuery.toLowerCase().trim();
+    return etfData
+      .filter(etf => {
+        const symbol = getDisplaySymbol(etf.symbol).toLowerCase();
+        const name = etf.details?.name?.toLowerCase() || '';
+        const isNotInWatchlist = !isInWatchlist(etf.symbol);
+        const matchesSearch = symbol.includes(query) || name.includes(query);
+        return isNotInWatchlist && matchesSearch;
+      });
+  }, [etfData, searchQuery, isInWatchlist]);
 
   const renderTableHeader = () => (
     <View style={[styles.tableHeader, { backgroundColor: colors.tableHeader, borderBottomColor: colors.tableBorder }]}>
@@ -472,11 +494,11 @@ const WatchlistScreen = () => {
           </View>
           
           <View style={styles.modalBody}>
-            <View style={[styles.searchContainer, { backgroundColor: colors.surfaceSecondary }]}>
-              <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+            <View style={[styles.modalSearchContainer, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+              <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.modalSearchIcon} />
               <TextInput
-                style={[styles.searchInput, { color: colors.text }]}
-                placeholder="Search ETF symbol..."
+                style={[styles.modalSearchInput, { color: colors.text }]}
+                placeholder="Search by symbol or name..."
                 placeholderTextColor={colors.textSecondary}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -484,29 +506,93 @@ const WatchlistScreen = () => {
               />
             </View>
             
+            <View style={styles.modalResultsHeader}>
+              <Text style={[styles.resultsCount, { color: colors.textSecondary }]}>
+                {filteredETFs.length} ETFs available
+              </Text>
+              {searchQuery.trim() && (
+                <Text style={[styles.searchHint, { color: colors.textSecondary }]}>
+                  Showing results for "{searchQuery}"
+                </Text>
+              )}
+            </View>
+            
             <FlatList
               data={filteredETFs}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.suggestionItem, { borderBottomColor: colors.border }]}
-                  onPress={() => handleAddToWatchlist(item.symbol)}
-                >
-                  <Text style={[styles.suggestionSymbol, { color: colors.text }]}>
-                    {getDisplaySymbol(item.symbol)}
-                  </Text>
-                  <Text style={[styles.suggestionPrice, { color: colors.textSecondary }]}>
-                    {formatters.price(pricesData[item.symbol]?.currentPrice || item.details?.lastClosePrice)}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              renderItem={({ item }) => {
+                const priceInfo = pricesData[item.symbol] || {};
+                const currentPrice = priceInfo.currentPrice || item.details?.lastClosePrice;
+                const changePercent = priceInfo.changePercent;
+                const etfName = item.details?.name || '';
+                
+                return (
+                  <TouchableOpacity
+                    style={[styles.suggestionItem, { borderBottomColor: colors.border }]}
+                    onPress={() => handleAddToWatchlist(item.symbol)}
+                  >
+                    <View style={styles.suggestionContent}>
+                      <View style={styles.suggestionHeader}>
+                        <Text style={[styles.suggestionSymbol, { color: colors.text }]}>
+                          {getDisplaySymbol(item.symbol)}
+                        </Text>
+                        <Text style={[styles.suggestionPrice, { color: colors.text }]}>
+                          {formatters.price(currentPrice)}
+                        </Text>
+                      </View>
+                      {etfName && (
+                        <Text style={[styles.suggestionName, { color: colors.textSecondary }]} numberOfLines={1}>
+                          {etfName}
+                        </Text>
+                      )}
+                      {changePercent !== undefined && (
+                        <Text style={[
+                          styles.suggestionChange, 
+                          { 
+                            color: changePercent >= 0 ? colors.positive : colors.negative,
+                            fontWeight: '600'
+                          }
+                        ]}>
+                          {formatters.percent(changePercent)}
+                        </Text>
+                      )}
+                    </View>
+                    <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+                  </TouchableOpacity>
+                );
+              }}
               keyExtractor={(item) => item.symbol}
               style={styles.suggestionsList}
+              showsVerticalScrollIndicator={true}
             />
           </View>
         </View>
       </View>
     </Modal>
   );
+
+  // Show loading spinner while checking authentication
+  if (authLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Header title="Watchlist" />
+        <LoadingSpinner size="large" text="Loading..." />
+      </View>
+    );
+  }
+
+  // Show Google Sign-In if user is not authenticated
+  if (!user) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Header title="Watchlist" />
+        <GoogleSignInComponent
+          onSignIn={handleGoogleSignIn}
+          user={user}
+          loading={authLoading}
+        />
+      </View>
+    );
+  }
 
   if (isLoading || watchlistLoading) {
     return (
@@ -1026,24 +1112,76 @@ const styles = StyleSheet.create({
   suggestionsList: {
     maxHeight: 300,
   },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+    minHeight: 48,
+  },
+  modalSearchIcon: {
+    marginRight: 12,
+  },
+  modalSearchInput: {
+    flex: 1,
+    paddingVertical: 4,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  modalResultsHeader: {
+    marginBottom: 12,
+  },
+  resultsCount: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  searchHint: {
+    fontSize: 12,
+    marginTop: 2,
+    fontStyle: 'italic',
+  },
   suggestionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 6,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
+    backgroundColor: 'transparent',
+  },
+  suggestionContent: {
+    flex: 1,
+    marginRight: 12,
+  },
+  suggestionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   suggestionSymbol: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1f2937',
   },
   suggestionPrice: {
     fontSize: 14,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  suggestionName: {
+    fontSize: 13,
     color: '#6b7280',
+    marginBottom: 2,
+  },
+  suggestionChange: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
 
