@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { Animated, View } from 'react-native';
+import { Animated, View, InteractionManager } from 'react-native';
 import { WatchlistProvider } from './src/contexts/WatchlistContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { AuthProvider } from './src/contexts/AuthContext';
@@ -9,8 +9,11 @@ import AppNavigator from './src/navigation/AppNavigator';
 
 // Try to import and initialize AdMob, but handle gracefully if it fails
 let mobileAds = null;
+let MaxAdContentRating = null;
 try {
-  mobileAds = require('react-native-google-mobile-ads').default;
+  const AdMobModule = require('react-native-google-mobile-ads');
+  mobileAds = AdMobModule.default;
+  MaxAdContentRating = AdMobModule.MaxAdContentRating;
 } catch (error) {
   console.log('AdMob not available:', error.message);
 }
@@ -68,18 +71,27 @@ function AppContent() {
 
 export default function App() {
   useEffect(() => {
-    // Initialize Google Mobile Ads SDK if available
-    if (mobileAds) {
-      mobileAds()
-        .initialize()
-        .then(adapterStatuses => {
-          console.log('Google Mobile Ads initialized successfully');
-          console.log('Adapter statuses:', adapterStatuses);
-        })
-        .catch(error => {
-          console.log('Failed to initialize Google Mobile Ads:', error);
-        });
-    }
+    // Defer Google Mobile Ads SDK initialization until after initial interactions
+    const task = InteractionManager.runAfterInteractions(() => {
+      if (mobileAds && MaxAdContentRating) {
+        mobileAds()
+          .setRequestConfiguration({
+            maxAdContentRating: MaxAdContentRating.G,
+            tagForChildDirectedTreatment: false,
+            tagForUnderAgeOfConsent: false,
+            testDeviceIdentifiers: ['EMULATOR'], // Add your device ID here
+          })
+          .then(() => mobileAds().initialize())
+          .then(adapterStatuses => {
+            console.log('Google Mobile Ads initialized successfully');
+            console.log('Adapter statuses:', adapterStatuses);
+          })
+          .catch(error => {
+            console.log('Failed to initialize Google Mobile Ads:', error);
+          });
+      }
+    });
+    return () => task && task.cancel && task.cancel();
   }, []);
 
   return (

@@ -5,10 +5,12 @@ import { useTheme } from '../contexts/ThemeContext';
 // Try to import AdMob, but handle gracefully if it fails
 let BannerAd = null;
 let TestIds = null;
+let mobileAds = null;
 try {
   const AdMobModule = require('react-native-google-mobile-ads');
   BannerAd = AdMobModule.BannerAd;
   TestIds = AdMobModule.TestIds;
+  mobileAds = AdMobModule.default;
 } catch (error) {
   console.log('AdMob not available:', error.message);
 }
@@ -37,9 +39,12 @@ const AdMobBanner = ({ style }) => {
         }}
         onAdLoaded={() => {
           console.log('Banner ad loaded successfully');
+          setAdError(false);
         }}
         onAdFailedToLoad={(error) => {
           console.log('Banner ad failed to load:', error);
+          console.log('Error code:', error.code);
+          console.log('Error message:', error.message);
           setAdError(true);
         }}
       />

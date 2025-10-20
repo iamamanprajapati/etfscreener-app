@@ -2,14 +2,11 @@
 // Replace these with your actual Google OAuth Client IDs from Google Cloud Console
 
 export const GOOGLE_AUTH_CONFIG = {
-  // Web Client ID (for server-side verification)
+  // Web Client ID (for server-side verification and Android)
   webClientId: process.env.EXPO_PUBLIC_WEB_CLIENT_ID || '1003388477747-3urp829413t8nh46luik0gg5up4363cj.apps.googleusercontent.com',
   
   // iOS Client ID
   iosClientId: process.env.EXPO_PUBLIC_IOS_CLIENT_ID || '1003388477747-bmm8f86solfeq2p7iptj67fplokd95cq.apps.googleusercontent.com',
-  
-  // Android Client ID (REQUIRED for Android)
-  androidClientId: process.env.EXPO_PUBLIC_ANDROID_CLIENT_ID || '1003388477747-9rs288bhqnt3j8djvbs4flmiijas8ptj.apps.googleusercontent.com',
   
   // Scopes
   scopes: ['profile', 'email'],
