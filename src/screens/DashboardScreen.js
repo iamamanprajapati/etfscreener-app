@@ -836,9 +836,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: 8,
+    paddingBottom: 12,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
+    minHeight: 120, // Increased height for LARGE_BANNER
   },
 });
 

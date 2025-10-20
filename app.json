@@ -43,6 +43,13 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.1003388477747-bmm8f86solfeq2p7iptj67fplokd95cq"
         }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-4785007038647034~9096882156",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
       ]
     ],
     "extra": {

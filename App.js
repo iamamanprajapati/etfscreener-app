@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { Animated, View } from 'react-native';
@@ -6,6 +6,14 @@ import { WatchlistProvider } from './src/contexts/WatchlistContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { AuthProvider } from './src/contexts/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
+
+// Try to import and initialize AdMob, but handle gracefully if it fails
+let mobileAds = null;
+try {
+  mobileAds = require('react-native-google-mobile-ads').default;
+} catch (error) {
+  console.log('AdMob not available:', error.message);
+}
 
 function AppContent() {
   const { isDarkMode, isTransitioning, nextTheme, fadeOutAnim, fadeInAnim, colors, nextColors } = useTheme();
@@ -59,6 +67,21 @@ function AppContent() {
 }
 
 export default function App() {
+  useEffect(() => {
+    // Initialize Google Mobile Ads SDK if available
+    if (mobileAds) {
+      mobileAds()
+        .initialize()
+        .then(adapterStatuses => {
+          console.log('Google Mobile Ads initialized successfully');
+          console.log('Adapter statuses:', adapterStatuses);
+        })
+        .catch(error => {
+          console.log('Failed to initialize Google Mobile Ads:', error);
+        });
+    }
+  }, []);
+
   return (
     <ThemeProvider>
       <AuthProvider>
