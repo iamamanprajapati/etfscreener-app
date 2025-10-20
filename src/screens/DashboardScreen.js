@@ -18,7 +18,6 @@ import { getDisplaySymbol } from '../utils/symbolUtils';
 import { useTheme } from '../contexts/ThemeContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/LoadingSpinner';
-import AdMobBanner from '../components/AdMobBanner';
 
 const DashboardScreen = () => {
   const navigation = useNavigation();
@@ -119,57 +118,50 @@ const DashboardScreen = () => {
       }
       setErrorMessage('');
 
-      // Try cached summary first
+      // Load summary first to render list quickly
       let summaryData = await cacheUtils.getCachedData();
-      let pricesData = await cacheUtils.getCachedPrices();
-
-      // If no summary cached, fetch it
       if (!summaryData) {
-        try {
-          const resp = await fetch(SUMMARY_API_URL, { 
-            method: 'GET', 
-            headers: { 'Accept': 'application/json' }, 
-            mode: 'cors' 
-          });
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-          summaryData = await resp.json();
-          await cacheUtils.setCachedData(summaryData);
-        } catch (err) {
-          throw err;
-        }
+        const summaryResp = await fetch(SUMMARY_API_URL, { headers: { 'Accept': 'application/json' } });
+        if (!summaryResp.ok) throw new Error(`HTTP ${summaryResp.status}: ${summaryResp.statusText}`);
+        summaryData = await summaryResp.json();
+        await cacheUtils.setCachedData(summaryData);
       }
+      // Render immediately with summary only; prices will enrich later
+      setTableData(processRawData(summaryData ?? [], await cacheUtils.getCachedPrices() ?? {}));
 
-      // Prices: use cached prices if available and valid; otherwise fetch
-      if (!pricesData || !(await cacheUtils.isPricesCacheValid())) {
+      // In background: refresh prices and apply when ready
+      (async () => {
         try {
-          const resp = await fetch(PRICES_API_URL);
-          if (resp.ok) {
-            const pricesArray = await resp.json();
-            const freshPricesData = pricesArray.reduce((acc, item) => {
-              const symbol = item.key;
-              if (symbol) {
-                acc[symbol] = {
-                  currentPrice: item.currentPrice,
-                  changePercent: item.changePercent,
-                  change: item.change,
-                  volume: item.volume,
-                  previousClose: item.previousClose
-                };
+          const useCached = await cacheUtils.isPricesCacheValid();
+          let pricesData = useCached ? await cacheUtils.getCachedPrices() : null;
+          if (!pricesData) {
+            const resp = await fetch(PRICES_API_URL);
+            if (resp.ok) {
+              const pricesArray = await resp.json();
+              const freshPricesData = pricesArray.reduce((acc, item) => {
+                const symbol = item.key;
+                if (symbol) {
+                  acc[symbol] = {
+                    currentPrice: item.currentPrice,
+                    changePercent: item.changePercent,
+                    change: item.change,
+                    volume: item.volume,
+                    previousClose: item.previousClose
+                  };
+                }
+                return acc;
+              }, {});
+              if (Object.keys(freshPricesData).length > 0) {
+                pricesData = freshPricesData;
+                await cacheUtils.setCachedPrices(pricesData);
               }
-              return acc;
-            }, {});
-            if (Object.keys(freshPricesData).length > 0) {
-              pricesData = freshPricesData;
-              await cacheUtils.setCachedPrices(pricesData);
             }
           }
-        } catch {
-          // keep cached prices if present
-        }
-      }
-
-      const processedData = processRawData(summaryData ?? [], pricesData ?? {});
-      setTableData(processedData);
+          if (pricesData) {
+            setTableData(current => processRawData(summaryData ?? [], pricesData));
+          }
+        } catch {}
+      })();
     } catch (error) {
       setErrorMessage(error.message || 'Failed to fetch data');
       console.error('Data fetch error:', error);
@@ -563,10 +555,6 @@ const DashboardScreen = () => {
         </View>
       </View>
       
-      {/* AdMob Banner - positioned above bottom tabs */}
-      <AdMobBanner 
-        style={[styles.bannerContainer, { backgroundColor: colors.surface }]} 
-      />
       
       {errorMessage && (
         <View style={[styles.errorContainer, { backgroundColor: colors.surface, borderColor: colors.error }]}>
@@ -830,16 +818,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   
-  // Banner Styles
-  bannerContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingBottom: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
 });
 
 export default DashboardScreen;

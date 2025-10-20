@@ -11,6 +11,7 @@ import { PRICES_API_URL, SUMMARY_API_URL, parseNumber } from '../utils/helpers';
 import { useTheme } from '../contexts/ThemeContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AdMobBanner from '../components/AdMobBanner';
 
 const MarketOverviewScreen = () => {
   const navigation = useNavigation();
@@ -308,6 +309,11 @@ const MarketOverviewScreen = () => {
         ListFooterComponent={renderFooter}
         style={styles.content}
       />
+      
+      {/* AdMob Banner - positioned above bottom tabs */}
+      <AdMobBanner 
+        style={[styles.bannerContainer, { backgroundColor: colors.surface }]} 
+      />
     </View>
   );
 };
@@ -414,6 +420,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#1f2937',
+  },
+  
+  // Banner Styles
+  bannerContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    // Let AdMob handle its own sizing
   },
 });
 
