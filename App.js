@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Animated, View } from 'react-native';
 import { WatchlistProvider } from './src/contexts/WatchlistContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
+import { AuthProvider } from './src/contexts/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
 function AppContent() {
@@ -60,9 +61,11 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <WatchlistProvider>
-        <AppContent />
-      </WatchlistProvider>
+      <AuthProvider>
+        <WatchlistProvider>
+          <AppContent />
+        </WatchlistProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
