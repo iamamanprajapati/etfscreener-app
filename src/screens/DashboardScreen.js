@@ -611,10 +611,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1f2937',
   },
-  buttonContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
   resetButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -631,9 +627,6 @@ const styles = StyleSheet.create({
   },
   
   // Table Styles
-  horizontalScroll: {
-    flex: 1,
-  },
   tableWrapper: {
     flex: 1,
     flexDirection: 'row',
@@ -642,9 +635,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     overflow: 'hidden',
-  },
-  tableContent: {
-    minHeight: 200, // Ensure minimum height for visibility
   },
   fixedColumn: {
     width: 120,
@@ -693,25 +683,12 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e5e7eb',
     height: 30, // Fixed header height
   },
-  stickyHeaderCell: {
-    width: 120,
-    paddingHorizontal: 8,
-    borderRightWidth: 2,
-    borderRightColor: '#e5e7eb',
-    justifyContent: 'center',
-    backgroundColor: '#f8fafc',
-    height: 30,
-    zIndex: 1000,
-  },
   scrollableHeader: {
     flexDirection: 'row',
     height: 35,
     backgroundColor: '#f8fafc',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
-  },
-  scrollableHeaderContent: {
-    flexDirection: 'row',
   },
   headerCell: {
     paddingHorizontal: 8,
@@ -739,9 +716,6 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginLeft: 4,
   },
-  activeHeaderCell: {
-    backgroundColor: '#eff6ff',
-  },
   numericHeaderCell: {
     alignItems: 'flex-end',
   },
@@ -752,26 +726,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     height: 30, // Fixed row height to match header
   },
-  stickyCell: {
-    width: 120,
-    paddingVertical: 1,
-    paddingHorizontal: 8,
-    borderRightWidth: 2,
-    borderRightColor: '#e5e7eb',
-    justifyContent: 'center',
-    height: 30,
-    zIndex: 999,
-  },
   scrollableRow: {
     flexDirection: 'row',
     height: 30,
     borderBottomWidth: 1,
-  },
-  scrollableRowContent: {
-    flexDirection: 'row',
-  },
-  selectedRow: {
-    backgroundColor: '#eff6ff',
   },
   tableCell: {
     paddingVertical: 1,
@@ -795,12 +753,6 @@ const styles = StyleSheet.create({
   symbolText: {
     fontSize: 12,
     fontWeight: '600',
-  },
-  positiveChange: {
-    color: '#059669',
-  },
-  negativeChange: {
-    color: '#dc2626',
   },
   
   // Empty State
