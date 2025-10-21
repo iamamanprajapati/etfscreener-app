@@ -3,17 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   ScrollView,
   TouchableOpacity,
   TextInput,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { cacheUtils } from '../utils/cache';
-import { SUMMARY_API_URL, PRICES_API_URL, parseNumber, formatters, renderDownFromHigh } from '../utils/helpers';
+import { SUMMARY_API_URL, PRICES_API_URL, parseNumber, formatters } from '../utils/helpers';
 import { getDisplaySymbol } from '../utils/symbolUtils';
 import { useTheme } from '../contexts/ThemeContext';
 import Header from '../components/Header';
@@ -94,10 +92,7 @@ const DashboardScreen = () => {
         symbol,
         currentPrice: parseNumber(currentPrice),
         changePercent: parseNumber(changePercent),
-        recordDate: details.recordDate ?? '',
-        lastClosePrice: parseNumber(details.lastClosePrice),
         lastDayVolume: parseNumber(details.lastDayVolume),
-        downFrom2YearHigh: parseNumber(details.downFrom2YearHigh),
         dailyRSI: parseNumber(details.dailyRSI),
         weeklyRSI: parseNumber(details.weeklyRSI),
         monthlyRSI: parseNumber(details.monthlyRSI),
@@ -249,11 +244,6 @@ const DashboardScreen = () => {
     return COLUMNS.filter(col => !col.hidden);
   }, []);
 
-  // Calculate total table width
-  const totalTableWidth = useMemo(() => {
-    const columnsWidth = visibleColumns.reduce((total, col) => total + col.width, 0);
-    return columnsWidth;
-  }, [visibleColumns]);
 
   // Calculate scrollable columns width (excluding symbol column)
   const scrollableColumnsWidth = useMemo(() => {
@@ -261,106 +251,6 @@ const DashboardScreen = () => {
     return scrollableColumns.reduce((total, col) => total + col.width, 0);
   }, [visibleColumns]);
 
-  const renderTableHeader = () => (
-    <View style={[styles.tableHeader, { backgroundColor: colors.tableHeader, borderBottomColor: colors.tableBorder }]}>
-      {visibleColumns.map((column) => {
-        const isActive = sortConfig.key === column.key;
-        const isSelected = selectedColumn === column.key;
-        
-        return (
-          <TouchableOpacity
-            key={column.key}
-            style={[
-              styles.headerCell,
-              column.numeric && styles.numericHeaderCell,
-              isActive && { backgroundColor: colors.primaryLight },
-              isSelected && { backgroundColor: colors.primary },
-              { 
-                width: column.width,
-                backgroundColor: isSelected ? colors.primary : colors.tableHeader,
-                borderRightColor: colors.tableBorder
-              }
-            ]}
-            onPress={() => {
-              handleSort(column.key);
-              handleColumnSelect(column.key);
-            }}
-          >
-            <View style={styles.headerContent}>
-              <Text style={[
-                styles.headerText, 
-                { color: isSelected ? '#fff' : colors.text }
-              ]}>
-                {column.label}
-              </Text>
-              <Text style={[
-                styles.sortIndicator, 
-                { color: isSelected ? '#fff' : colors.textSecondary }
-              ]}>
-                {isActive ? (sortConfig.dir === 'asc' ? '▲' : '▼') : '⇅'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-
-  const renderTableRow = (item) => {
-    return (
-      <View
-        key={item.symbol}
-        style={[
-          styles.tableRow, 
-          { backgroundColor: colors.tableRow, borderBottomColor: colors.tableBorderLight }
-        ]}
-      >
-        {visibleColumns.map((column) => {
-          const isSymbolColumn = column.key === 'symbol';
-          const value = item[column.key];
-          const renderedValue = column.render ? column.render(value, item) : (value ?? '—');
-          
-          if (isSymbolColumn) {
-            return (
-              <View key={column.key} style={[styles.tableCell, { width: column.width, borderRightColor: colors.tableBorderLight }]}>
-                <TouchableOpacity
-                  style={styles.symbolButton}
-                  onPress={() => handleRowPress(item.symbol)}
-                >
-                  <Text style={[styles.symbolText, { color: colors.primary }]}>{getDisplaySymbol(item.symbol)}</Text>
-                </TouchableOpacity>
-              </View>
-            );
-          }
-          
-          return (
-            <View key={column.key} style={[styles.tableCell, column.numeric && styles.numericCell, { width: column.width, borderRightColor: colors.tableBorderLight }]}>
-              <Text style={[
-                styles.cellText,
-                { color: colors.text },
-                // Make all percentage columns bold for maximum visibility
-                (column.key === 'changePercent' || column.key === 'weeklyReturn' || 
-                 column.key === 'monthlyReturn' || column.key === 'yearlyReturn' || 
-                 column.key === 'twoYearReturn') && { fontWeight: '700' },
-                column.key === 'changePercent' && value > 0 && { color: colors.positive },
-                column.key === 'changePercent' && value < 0 && { color: colors.negative },
-                column.key === 'weeklyReturn' && value > 0 && { color: colors.positive },
-                column.key === 'weeklyReturn' && value < 0 && { color: colors.negative },
-                column.key === 'monthlyReturn' && value > 0 && { color: colors.positive },
-                column.key === 'monthlyReturn' && value < 0 && { color: colors.negative },
-                column.key === 'yearlyReturn' && value > 0 && { color: colors.positive },
-                column.key === 'yearlyReturn' && value < 0 && { color: colors.negative },
-                column.key === 'twoYearReturn' && value > 0 && { color: colors.positive },
-                column.key === 'twoYearReturn' && value < 0 && { color: colors.negative },
-              ]}>
-                {renderedValue}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-    );
-  };
 
 
 
@@ -482,10 +372,10 @@ const DashboardScreen = () => {
                         styles.headerCell,
                         column.numeric && styles.numericHeaderCell,
                         isActive && { backgroundColor: colors.primaryLight },
-                        isSelected && { backgroundColor: colors.primary },
+                        isSelected && { backgroundColor: colors.primaryHeader },
                         { 
                           width: column.width,
-                          backgroundColor: isSelected ? colors.primary : colors.tableHeader,
+                          backgroundColor: isSelected ? colors.primaryHeader : colors.tableHeader,
                           borderRightColor: colors.tableBorder
                         }
                       ]}
