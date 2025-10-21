@@ -106,7 +106,7 @@ const CompareScreen = () => {
       }
       setErrorMessage('');
 
-      // Try cached summary first
+      // Load both summary and prices data together to avoid race conditions
       let summaryData = await cacheUtils.getCachedData();
       let pricesData = await cacheUtils.getCachedPrices();
 
@@ -126,8 +126,9 @@ const CompareScreen = () => {
         }
       }
 
-      // Prices: use cached prices if available and valid; otherwise fetch
-      if (!pricesData || !(await cacheUtils.isPricesCacheValid())) {
+      // Check if prices cache is valid, if not fetch fresh prices
+      const isPricesCacheValid = await cacheUtils.isPricesCacheValid();
+      if (!pricesData || !isPricesCacheValid) {
         try {
           const resp = await fetch(PRICES_API_URL);
           if (resp.ok) {
@@ -150,13 +151,20 @@ const CompareScreen = () => {
               await cacheUtils.setCachedPrices(pricesData);
             }
           }
-        } catch {
-          // keep cached prices if present
+        } catch (error) {
+          console.warn('Failed to fetch prices, using cached data if available:', error);
         }
       }
 
-      setPricesData(pricesData ?? {});
-      setData(processRawData(summaryData ?? [], pricesData ?? {}));
+      // Only render when we have both summary and prices data
+      if (summaryData && pricesData) {
+        setPricesData(pricesData);
+        setData(processRawData(summaryData, pricesData));
+      } else if (summaryData) {
+        // Fallback: render with summary only if prices fail
+        setPricesData(pricesData ?? {});
+        setData(processRawData(summaryData, pricesData ?? {}));
+      }
     } catch (error) {
       setErrorMessage(error.message || 'Failed to fetch data');
       console.error('Data fetch error:', error);

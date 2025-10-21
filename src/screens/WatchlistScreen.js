@@ -135,12 +135,12 @@ const WatchlistScreen = () => {
       }
       setErrorMessage('');
 
-      // Try cached summary first
-        let summaryData = await cacheUtils.getCachedData();
+      // Load both summary and prices data together to avoid race conditions
+      let summaryData = await cacheUtils.getCachedData();
       let pricesData = await cacheUtils.getCachedPrices();
 
       // If no summary cached, fetch it
-        if (!summaryData) {
+      if (!summaryData) {
         try {
           const resp = await fetch(SUMMARY_API_URL, { 
             method: 'GET', 
@@ -149,14 +149,15 @@ const WatchlistScreen = () => {
           });
           if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
           summaryData = await resp.json();
-            await cacheUtils.setCachedData(summaryData);
+          await cacheUtils.setCachedData(summaryData);
         } catch (err) {
           throw err;
         }
       }
 
-      // Prices: use cached prices if available and valid; otherwise fetch
-      if (!pricesData || !(await cacheUtils.isPricesCacheValid())) {
+      // Check if prices cache is valid, if not fetch fresh prices
+      const isPricesCacheValid = await cacheUtils.isPricesCacheValid();
+      if (!pricesData || !isPricesCacheValid) {
         try {
           const resp = await fetch(PRICES_API_URL);
           if (resp.ok) {
@@ -165,34 +166,41 @@ const WatchlistScreen = () => {
               const symbol = item.key;
               if (symbol) {
                 acc[symbol] = {
-                    currentPrice: item.currentPrice,
-                    changePercent: item.changePercent,
-                    change: item.change,
-                    volume: item.volume,
-                    previousClose: item.previousClose
-                  };
-                }
-                return acc;
-              }, {});
+                  currentPrice: item.currentPrice,
+                  changePercent: item.changePercent,
+                  change: item.change,
+                  volume: item.volume,
+                  previousClose: item.previousClose
+                };
+              }
+              return acc;
+            }, {});
             if (Object.keys(freshPricesData).length > 0) {
               pricesData = freshPricesData;
               await cacheUtils.setCachedPrices(pricesData);
             }
           }
-        } catch {
-          // keep cached prices if present
-          }
+        } catch (error) {
+          console.warn('Failed to fetch prices, using cached data if available:', error);
         }
+      }
         
-      setEtfData(summaryData ?? []);
-      setPricesData(pricesData ?? {});
-      } catch (error) {
+      // Only set data when we have both summary and prices data
+      if (summaryData && pricesData) {
+        setEtfData(summaryData);
+        setPricesData(pricesData);
+      } else if (summaryData) {
+        // Fallback: render with summary only if prices fail
+        setEtfData(summaryData);
+        setPricesData(pricesData ?? {});
+      }
+    } catch (error) {
       setErrorMessage(error.message || 'Failed to fetch data');
       console.error('Data fetch error:', error);
-      } finally {
-        setIsLoading(false);
+    } finally {
+      setIsLoading(false);
       setIsRefreshing(false);
-      }
+    }
   }, []);
 
   useEffect(() => {

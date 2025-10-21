@@ -26,6 +26,7 @@ const DashboardScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [loadingStatus, setLoadingStatus] = useState('Loading ETF data...');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'changePercent', dir: 'desc' });
   const [selectedColumn, setSelectedColumn] = useState('currentPrice');
@@ -118,50 +119,62 @@ const DashboardScreen = () => {
       }
       setErrorMessage('');
 
-      // Load summary first to render list quickly
+      // Load both summary and prices data together to avoid race conditions
+      setLoadingStatus('Loading ETF summary data...');
       let summaryData = await cacheUtils.getCachedData();
+      
+      // If no summary cached, fetch it
       if (!summaryData) {
+        setLoadingStatus('Fetching ETF summary from server...');
         const summaryResp = await fetch(SUMMARY_API_URL, { headers: { 'Accept': 'application/json' } });
         if (!summaryResp.ok) throw new Error(`HTTP ${summaryResp.status}: ${summaryResp.statusText}`);
         summaryData = await summaryResp.json();
         await cacheUtils.setCachedData(summaryData);
       }
-      // Render immediately with summary only; prices will enrich later
-      setTableData(processRawData(summaryData ?? [], await cacheUtils.getCachedPrices() ?? {}));
 
-      // In background: refresh prices and apply when ready
-      (async () => {
+      setLoadingStatus('Loading price data...');
+      let pricesData = await cacheUtils.getCachedPrices();
+
+      // Check if prices cache is valid, if not fetch fresh prices
+      const isPricesCacheValid = await cacheUtils.isPricesCacheValid();
+      if (!pricesData || !isPricesCacheValid) {
+        setLoadingStatus('Fetching latest prices...');
         try {
-          const useCached = await cacheUtils.isPricesCacheValid();
-          let pricesData = useCached ? await cacheUtils.getCachedPrices() : null;
-          if (!pricesData) {
-            const resp = await fetch(PRICES_API_URL);
-            if (resp.ok) {
-              const pricesArray = await resp.json();
-              const freshPricesData = pricesArray.reduce((acc, item) => {
-                const symbol = item.key;
-                if (symbol) {
-                  acc[symbol] = {
-                    currentPrice: item.currentPrice,
-                    changePercent: item.changePercent,
-                    change: item.change,
-                    volume: item.volume,
-                    previousClose: item.previousClose
-                  };
-                }
-                return acc;
-              }, {});
-              if (Object.keys(freshPricesData).length > 0) {
-                pricesData = freshPricesData;
-                await cacheUtils.setCachedPrices(pricesData);
+          const resp = await fetch(PRICES_API_URL);
+          if (resp.ok) {
+            const pricesArray = await resp.json();
+            const freshPricesData = pricesArray.reduce((acc, item) => {
+              const symbol = item.key;
+              if (symbol) {
+                acc[symbol] = {
+                  currentPrice: item.currentPrice,
+                  changePercent: item.changePercent,
+                  change: item.change,
+                  volume: item.volume,
+                  previousClose: item.previousClose
+                };
               }
+              return acc;
+            }, {});
+            if (Object.keys(freshPricesData).length > 0) {
+              pricesData = freshPricesData;
+              await cacheUtils.setCachedPrices(pricesData);
             }
           }
-          if (pricesData) {
-            setTableData(current => processRawData(summaryData ?? [], pricesData));
-          }
-        } catch {}
-      })();
+        } catch (error) {
+          console.warn('Failed to fetch prices, using cached data if available:', error);
+        }
+      }
+
+      setLoadingStatus('Processing data...');
+
+      // Only render when we have both summary and prices data
+      if (summaryData && pricesData) {
+        setTableData(processRawData(summaryData, pricesData));
+      } else if (summaryData) {
+        // Fallback: render with summary only if prices fail
+        setTableData(processRawData(summaryData, {}));
+      }
     } catch (error) {
       setErrorMessage(error.message || 'Failed to fetch data');
       console.error('Data fetch error:', error);
@@ -378,7 +391,7 @@ const DashboardScreen = () => {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Header title="ETF Dashboard" />
-        <LoadingSpinner size="large" text="Loading ETF data..." />
+        <LoadingSpinner size="large" text={loadingStatus} />
       </View>
     );
   }
