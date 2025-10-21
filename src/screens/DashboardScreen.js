@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   fixedHeaderCell: {
-    height: 40,
+    height: 35,
     paddingHorizontal: 8,
     justifyContent: 'center',
     backgroundColor: '#f8fafc',
@@ -666,7 +666,7 @@ const styles = StyleSheet.create({
     bounces: false,
   },
   fixedRowCell: {
-    height: 40,
+    height: 30,
     paddingVertical: 1,
     paddingHorizontal: 8,
     justifyContent: 'center',
@@ -691,7 +691,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
-    height: 40, // Fixed header height
+    height: 30, // Fixed header height
   },
   stickyHeaderCell: {
     width: 120,
@@ -700,12 +700,12 @@ const styles = StyleSheet.create({
     borderRightColor: '#e5e7eb',
     justifyContent: 'center',
     backgroundColor: '#f8fafc',
-    height: 40,
+    height: 30,
     zIndex: 1000,
   },
   scrollableHeader: {
     flexDirection: 'row',
-    height: 40,
+    height: 35,
     backgroundColor: '#f8fafc',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -720,7 +720,7 @@ const styles = StyleSheet.create({
     width: 100, // Fixed width for consistent alignment
     justifyContent: 'center',
     backgroundColor: '#f8fafc',
-    height: 40, // Match header height,
+    height: 35, // Match header height,
     borderRadius: 8,
   },
   headerContent: {
@@ -750,7 +750,7 @@ const styles = StyleSheet.create({
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    height: 40, // Fixed row height to match header
+    height: 30, // Fixed row height to match header
   },
   stickyCell: {
     width: 120,
@@ -759,12 +759,12 @@ const styles = StyleSheet.create({
     borderRightWidth: 2,
     borderRightColor: '#e5e7eb',
     justifyContent: 'center',
-    height: 40,
+    height: 30,
     zIndex: 999,
   },
   scrollableRow: {
     flexDirection: 'row',
-    height: 40,
+    height: 30,
     borderBottomWidth: 1,
   },
   scrollableRowContent: {
@@ -780,7 +780,7 @@ const styles = StyleSheet.create({
     borderRightColor: '#e5e7eb',
     width: 100, // Fixed width to match header cells
     justifyContent: 'center',
-    height: 40, // Match row height
+    height: 30, // Match row height
   },
   numericCell: {
     alignItems: 'flex-end',
@@ -805,7 +805,7 @@ const styles = StyleSheet.create({
   
   // Empty State
   emptyState: {
-    padding: 40,
+    padding: 30,
     alignItems: 'center',
   },
   emptyText: {
