@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
     height: 30, // Match row height
   },
   numericCell: {
-    alignItems: 'flex-end',
+    // alignItems: 'flex-end',
   },
   cellText: {
     fontSize: 12,
