@@ -14,6 +14,7 @@ import {
 } from '@react-native-google-signin/google-signin';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { GOOGLE_AUTH_CONFIG } from '../config/googleAuth';
 
 // Configure Google Sign-In
@@ -21,23 +22,21 @@ GoogleSignin.configure(GOOGLE_AUTH_CONFIG);
 
 const GoogleSignInComponent = ({ onSignIn, user, loading = false }) => {
   const { colors } = useTheme();
+  const { signInWithGoogle } = useAuth();
 
   const signIn = async () => {
     try {
-      // Check if your device supports Google Play
-      await GoogleSignin.hasPlayServices();
+      // Use the AuthContext signInWithGoogle method which handles backend authentication
+      const userInfo = await signInWithGoogle();
       
-      // Get the users ID token
-      const userInfo = await GoogleSignin.signIn();
-      
-      console.log('Google Sign-In Success:', userInfo);
+      console.log('Authentication Success:', userInfo);
       
       // Call the parent component's onSignIn callback
       if (onSignIn) {
         onSignIn(userInfo);
       }
     } catch (error) {
-      console.log('Google Sign-In Error:', error);
+      console.log('Authentication Error:', error);
       
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         // User cancelled the login flow
@@ -50,7 +49,7 @@ const GoogleSignInComponent = ({ onSignIn, user, loading = false }) => {
         Alert.alert('Error', 'Google Play Services not available');
       } else {
         // Some other error happened
-        Alert.alert('Error', 'Failed to sign in with Google. Please try again.');
+        Alert.alert('Error', 'Failed to sign in. Please try again.');
       }
     }
   };

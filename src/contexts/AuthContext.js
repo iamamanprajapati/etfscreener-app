@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GOOGLE_AUTH_CONFIG } from '../config/googleAuth';
+import authService from '../services/authService';
 
 const AuthContext = createContext();
 
@@ -35,9 +36,12 @@ export const AuthProvider = ({ children }) => {
   const loadUserFromStorage = async () => {
     try {
       const storedUser = await AsyncStorage.getItem('user');
-      if (storedUser) {
+      const storedToken = await AsyncStorage.getItem('accessToken');
+      
+      if (storedUser && storedToken) {
         const userData = JSON.parse(storedUser);
         setUser(userData);
+        authService.setAccessToken(storedToken);
         setLoading(false);
       } else {
         setLoading(false);
@@ -49,9 +53,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Save user to AsyncStorage
-  const saveUserToStorage = async (userData) => {
+  const saveUserToStorage = async (userData, accessToken) => {
     try {
       await AsyncStorage.setItem('user', JSON.stringify(userData));
+      if (accessToken) {
+        await AsyncStorage.setItem('accessToken', accessToken);
+      }
     } catch (error) {
       console.log('Error saving user to storage:', error);
     }
@@ -61,6 +68,7 @@ export const AuthProvider = ({ children }) => {
   const removeUserFromStorage = async () => {
     try {
       await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('accessToken');
     } catch (error) {
       console.log('Error removing user from storage:', error);
     }
@@ -71,8 +79,26 @@ export const AuthProvider = ({ children }) => {
       // Check if user is signed in by trying to get current user
       const userInfo = await GoogleSignin.getCurrentUser();
       if (userInfo && userInfo.data) {
-        setUser(userInfo);
-        await saveUserToStorage(userInfo);
+        // Try to authenticate with backend using stored token
+        const storedToken = await AsyncStorage.getItem('accessToken');
+        if (storedToken) {
+          authService.setAccessToken(storedToken);
+          setUser(userInfo);
+        } else {
+          // If no stored token, try to re-authenticate with backend
+          try {
+            const authResult = await authService.authenticateWithGoogle(userInfo);
+            if (authResult.success) {
+              setUser(userInfo);
+              await saveUserToStorage(userInfo, authResult.accessToken);
+            }
+          } catch (authError) {
+            console.log('Backend authentication failed:', authError);
+            // Continue with local Google sign-in
+            setUser(userInfo);
+            await saveUserToStorage(userInfo);
+          }
+        }
       }
     } catch (error) {
       // User is not signed in, which is normal
@@ -94,9 +120,28 @@ export const AuthProvider = ({ children }) => {
       // Get the users ID token
       const userInfo = await GoogleSignin.signIn();
       
-      setUser(userInfo);
-      await saveUserToStorage(userInfo);
-      return userInfo;
+      console.log('Google Sign-In successful, authenticating with backend...');
+      
+      // Authenticate with backend using the Google auth result
+      try {
+        const authResult = await authService.authenticateWithGoogle(userInfo);
+        
+        if (authResult.success) {
+          console.log('Backend authentication successful');
+          setUser(userInfo);
+          await saveUserToStorage(userInfo, authResult.accessToken);
+          return userInfo;
+        } else {
+          throw new Error('Backend authentication failed');
+        }
+      } catch (backendError) {
+        console.error('Backend authentication error:', backendError);
+        // Fallback to local authentication if backend fails
+        console.log('Falling back to local authentication');
+        setUser(userInfo);
+        await saveUserToStorage(userInfo);
+        return userInfo;
+      }
     } catch (error) {
       console.error('Error signing in with Google:', error);
       setError(error.message);
@@ -110,7 +155,18 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       setError(null);
+      
+      // Logout from backend first
+      try {
+        await authService.logout();
+      } catch (backendError) {
+        console.log('Backend logout failed, continuing with local logout:', backendError);
+      }
+      
+      // Sign out from Google
       await GoogleSignin.signOut();
+      
+      // Clear local state
       setUser(null);
       await removeUserFromStorage();
     } catch (error) {
@@ -125,7 +181,8 @@ export const AuthProvider = ({ children }) => {
     loading,
     error,
     signInWithGoogle,
-    logout
+    logout,
+    authService
   };
 
   return (
