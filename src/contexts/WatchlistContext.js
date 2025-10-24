@@ -44,8 +44,23 @@ export const WatchlistProvider = ({ children }) => {
       if (watchlistService && authService.isAuthenticated()) {
         try {
           const apiWatchlist = await watchlistService.getWatchlist();
-          // Ensure we have an array
-          const watchlistArray = Array.isArray(apiWatchlist) ? apiWatchlist : (apiWatchlist?.data || []);
+          console.log('API watchlist response:', apiWatchlist);
+          
+          // Handle different response formats
+          let watchlistArray = [];
+          if (Array.isArray(apiWatchlist)) {
+            watchlistArray = apiWatchlist;
+          } else if (apiWatchlist?.data && Array.isArray(apiWatchlist.data)) {
+            watchlistArray = apiWatchlist.data;
+          } else if (apiWatchlist?.symbols && Array.isArray(apiWatchlist.symbols)) {
+            // Convert symbols array to watchlist items format
+            watchlistArray = apiWatchlist.symbols.map(symbol => ({ symbol, addedAt: new Date().toISOString() }));
+          } else {
+            console.warn('Unexpected watchlist response structure:', apiWatchlist);
+            watchlistArray = [];
+          }
+          
+          console.log('Processed watchlist array:', watchlistArray);
           setWatchlist(watchlistArray);
           return;
         } catch (apiError) {
@@ -86,7 +101,18 @@ export const WatchlistProvider = ({ children }) => {
           await watchlistService.addToWatchlist(symbol);
           // Reload watchlist from API
           const apiWatchlist = await watchlistService.getWatchlist();
-          const watchlistArray = Array.isArray(apiWatchlist) ? apiWatchlist : (apiWatchlist?.data || []);
+          
+          // Handle different response formats
+          let watchlistArray = [];
+          if (Array.isArray(apiWatchlist)) {
+            watchlistArray = apiWatchlist;
+          } else if (apiWatchlist?.data && Array.isArray(apiWatchlist.data)) {
+            watchlistArray = apiWatchlist.data;
+          } else if (apiWatchlist?.symbols && Array.isArray(apiWatchlist.symbols)) {
+            // Convert symbols array to watchlist items format
+            watchlistArray = apiWatchlist.symbols.map(symbol => ({ symbol, addedAt: new Date().toISOString() }));
+          }
+          
           setWatchlist(watchlistArray);
           return true;
         } catch (apiError) {
@@ -118,7 +144,18 @@ export const WatchlistProvider = ({ children }) => {
           await watchlistService.removeFromWatchlist(symbol);
           // Reload watchlist from API
           const apiWatchlist = await watchlistService.getWatchlist();
-          const watchlistArray = Array.isArray(apiWatchlist) ? apiWatchlist : (apiWatchlist?.data || []);
+          
+          // Handle different response formats
+          let watchlistArray = [];
+          if (Array.isArray(apiWatchlist)) {
+            watchlistArray = apiWatchlist;
+          } else if (apiWatchlist?.data && Array.isArray(apiWatchlist.data)) {
+            watchlistArray = apiWatchlist.data;
+          } else if (apiWatchlist?.symbols && Array.isArray(apiWatchlist.symbols)) {
+            // Convert symbols array to watchlist items format
+            watchlistArray = apiWatchlist.symbols.map(symbol => ({ symbol, addedAt: new Date().toISOString() }));
+          }
+          
           setWatchlist(watchlistArray);
           return true;
         } catch (apiError) {

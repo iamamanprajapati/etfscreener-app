@@ -47,6 +47,8 @@ class WatchlistService {
         return response.data;
       } else if (response && Array.isArray(response.watchlist)) {
         return response.watchlist;
+      } else if (response && Array.isArray(response.symbols)) {
+        return response; // Return the full response object with symbols array
       } else {
         console.warn('Unexpected watchlist response structure:', response);
         return [];
@@ -61,7 +63,15 @@ class WatchlistService {
   async isInWatchlist(symbol) {
     try {
       const watchlist = await this.getWatchlist();
-      return watchlist.some(item => item.symbol === symbol);
+      
+      // Handle different response formats
+      if (Array.isArray(watchlist)) {
+        return watchlist.some(item => item.symbol === symbol);
+      } else if (watchlist && Array.isArray(watchlist.symbols)) {
+        return watchlist.symbols.includes(symbol);
+      } else {
+        return false;
+      }
     } catch (error) {
       console.error('Error checking watchlist status:', error);
       return false;
