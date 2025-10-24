@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import WatchlistService from '../services/watchlistService';
+import { useAuth } from './AuthContext';
 
 const WatchlistContext = createContext();
 
@@ -14,19 +16,50 @@ export const useWatchlist = () => {
 export const WatchlistProvider = ({ children }) => {
   const [watchlist, setWatchlist] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { authService } = useAuth();
+  const [watchlistService, setWatchlistService] = useState(null);
+
+  // Ensure watchlist is always an array
+  const safeWatchlist = Array.isArray(watchlist) ? watchlist : [];
 
   const WATCHLIST_STORAGE_KEY = '@etf_watchlist';
 
-  // Load watchlist from storage on app start
+  // Initialize watchlist service when authService is available
+  useEffect(() => {
+    if (authService) {
+      setWatchlistService(new WatchlistService(authService));
+    }
+  }, [authService]);
+
+  // Load watchlist from API or storage on app start
   useEffect(() => {
     loadWatchlist();
-  }, []);
+  }, [watchlistService]);
 
   const loadWatchlist = async () => {
     try {
+      setLoading(true);
+      
+      // Try to load from API first if user is authenticated
+      if (watchlistService && authService.isAuthenticated()) {
+        try {
+          const apiWatchlist = await watchlistService.getWatchlist();
+          // Ensure we have an array
+          const watchlistArray = Array.isArray(apiWatchlist) ? apiWatchlist : (apiWatchlist?.data || []);
+          setWatchlist(watchlistArray);
+          return;
+        } catch (apiError) {
+          console.log('API watchlist load failed, falling back to local storage:', apiError);
+        }
+      }
+      
+      // Fallback to local storage
       const storedWatchlist = await AsyncStorage.getItem(WATCHLIST_STORAGE_KEY);
       if (storedWatchlist) {
-        setWatchlist(JSON.parse(storedWatchlist));
+        const parsedWatchlist = JSON.parse(storedWatchlist);
+        setWatchlist(Array.isArray(parsedWatchlist) ? parsedWatchlist : []);
+      } else {
+        setWatchlist([]);
       }
     } catch (error) {
       console.error('Error loading watchlist:', error);
@@ -47,13 +80,28 @@ export const WatchlistProvider = ({ children }) => {
 
   const addToWatchlist = async (symbol, etfData = {}) => {
     try {
+      // Try API first if authenticated
+      if (watchlistService && authService.isAuthenticated()) {
+        try {
+          await watchlistService.addToWatchlist(symbol);
+          // Reload watchlist from API
+          const apiWatchlist = await watchlistService.getWatchlist();
+          const watchlistArray = Array.isArray(apiWatchlist) ? apiWatchlist : (apiWatchlist?.data || []);
+          setWatchlist(watchlistArray);
+          return true;
+        } catch (apiError) {
+          console.log('API add to watchlist failed, falling back to local storage:', apiError);
+        }
+      }
+      
+      // Fallback to local storage
       const watchlistItem = {
         symbol,
         addedAt: new Date().toISOString(),
         ...etfData
       };
 
-      const newWatchlist = [...watchlist, watchlistItem];
+      const newWatchlist = [...safeWatchlist, watchlistItem];
       await saveWatchlist(newWatchlist);
       return true;
     } catch (error) {
@@ -64,7 +112,22 @@ export const WatchlistProvider = ({ children }) => {
 
   const removeFromWatchlist = async (symbol) => {
     try {
-      const newWatchlist = watchlist.filter(item => item.symbol !== symbol);
+      // Try API first if authenticated
+      if (watchlistService && authService.isAuthenticated()) {
+        try {
+          await watchlistService.removeFromWatchlist(symbol);
+          // Reload watchlist from API
+          const apiWatchlist = await watchlistService.getWatchlist();
+          const watchlistArray = Array.isArray(apiWatchlist) ? apiWatchlist : (apiWatchlist?.data || []);
+          setWatchlist(watchlistArray);
+          return true;
+        } catch (apiError) {
+          console.log('API remove from watchlist failed, falling back to local storage:', apiError);
+        }
+      }
+      
+      // Fallback to local storage
+      const newWatchlist = safeWatchlist.filter(item => item.symbol !== symbol);
       await saveWatchlist(newWatchlist);
       return true;
     } catch (error) {
@@ -74,7 +137,7 @@ export const WatchlistProvider = ({ children }) => {
   };
 
   const isInWatchlist = (symbol) => {
-    return watchlist.some(item => item.symbol === symbol);
+    return safeWatchlist.some(item => item.symbol === symbol);
   };
 
   const clearWatchlist = async () => {
@@ -89,11 +152,11 @@ export const WatchlistProvider = ({ children }) => {
   };
 
   const getWatchlistCount = () => {
-    return watchlist.length;
+    return safeWatchlist.length;
   };
 
   const value = {
-    watchlist,
+    watchlist: safeWatchlist,
     loading,
     addToWatchlist,
     removeFromWatchlist,
