@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import WatchlistService from '../services/watchlistService';
 import { useAuth } from './AuthContext';
 
@@ -22,8 +21,6 @@ export const WatchlistProvider = ({ children }) => {
   // Ensure watchlist is always an array
   const safeWatchlist = Array.isArray(watchlist) ? watchlist : [];
 
-  const WATCHLIST_STORAGE_KEY = '@etf_watchlist';
-
   // Initialize watchlist service when authService is available
   useEffect(() => {
     if (authService) {
@@ -40,7 +37,7 @@ export const WatchlistProvider = ({ children }) => {
     try {
       setLoading(true);
       
-      // Try to load from API first if user is authenticated
+      // Only load from API if user is authenticated
       if (watchlistService && authService.isAuthenticated()) {
         try {
           const apiWatchlist = await watchlistService.getWatchlist();
@@ -62,34 +59,19 @@ export const WatchlistProvider = ({ children }) => {
           
           console.log('Processed watchlist array:', watchlistArray);
           setWatchlist(watchlistArray);
-          return;
         } catch (apiError) {
-          console.log('API watchlist load failed, falling back to local storage:', apiError);
+          console.error('API watchlist load failed:', apiError);
+          setWatchlist([]);
         }
-      }
-      
-      // Fallback to local storage
-      const storedWatchlist = await AsyncStorage.getItem(WATCHLIST_STORAGE_KEY);
-      if (storedWatchlist) {
-        const parsedWatchlist = JSON.parse(storedWatchlist);
-        setWatchlist(Array.isArray(parsedWatchlist) ? parsedWatchlist : []);
       } else {
+        // If not authenticated, set empty watchlist
         setWatchlist([]);
       }
     } catch (error) {
       console.error('Error loading watchlist:', error);
+      setWatchlist([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const saveWatchlist = async (newWatchlist) => {
-    try {
-      await AsyncStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(newWatchlist));
-      setWatchlist(newWatchlist);
-    } catch (error) {
-      console.error('Error saving watchlist:', error);
-      throw error;
     }
   };
 
@@ -116,20 +98,12 @@ export const WatchlistProvider = ({ children }) => {
           setWatchlist(watchlistArray);
           return true;
         } catch (apiError) {
-          console.log('API add to watchlist failed, falling back to local storage:', apiError);
+          console.error('API add to watchlist failed:', apiError);
+          throw apiError;
         }
+      } else {
+        throw new Error('User not authenticated');
       }
-      
-      // Fallback to local storage
-      const watchlistItem = {
-        symbol,
-        addedAt: new Date().toISOString(),
-        ...etfData
-      };
-
-      const newWatchlist = [...safeWatchlist, watchlistItem];
-      await saveWatchlist(newWatchlist);
-      return true;
     } catch (error) {
       console.error('Error adding to watchlist:', error);
       throw error;
@@ -159,14 +133,12 @@ export const WatchlistProvider = ({ children }) => {
           setWatchlist(watchlistArray);
           return true;
         } catch (apiError) {
-          console.log('API remove from watchlist failed, falling back to local storage:', apiError);
+          console.error('API remove from watchlist failed:', apiError);
+          throw apiError;
         }
+      } else {
+        throw new Error('User not authenticated');
       }
-      
-      // Fallback to local storage
-      const newWatchlist = safeWatchlist.filter(item => item.symbol !== symbol);
-      await saveWatchlist(newWatchlist);
-      return true;
     } catch (error) {
       console.error('Error removing from watchlist:', error);
       throw error;
@@ -179,7 +151,6 @@ export const WatchlistProvider = ({ children }) => {
 
   const clearWatchlist = async () => {
     try {
-      await AsyncStorage.removeItem(WATCHLIST_STORAGE_KEY);
       setWatchlist([]);
       return true;
     } catch (error) {
