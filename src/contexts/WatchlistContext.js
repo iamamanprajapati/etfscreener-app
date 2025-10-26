@@ -2,6 +2,16 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import WatchlistService from '../services/watchlistService';
 import { useAuth } from './AuthContext';
 
+// Import Reactotron for debugging
+let Reactotron = null;
+if (__DEV__) {
+  try {
+    Reactotron = require('reactotron-react-native').default;
+  } catch (error) {
+    console.log('Reactotron not available:', error.message);
+  }
+}
+
 const WatchlistContext = createContext();
 
 export const useWatchlist = () => {
@@ -15,7 +25,7 @@ export const useWatchlist = () => {
 export const WatchlistProvider = ({ children }) => {
   const [watchlist, setWatchlist] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { authService } = useAuth();
+  const { authService, user } = useAuth();
   const [watchlistService, setWatchlistService] = useState(null);
 
   // Ensure watchlist is always an array
@@ -33,6 +43,17 @@ export const WatchlistProvider = ({ children }) => {
     loadWatchlist();
   }, [watchlistService]);
 
+  // Load watchlist immediately when user authentication changes
+  useEffect(() => {
+    if (user && authService.isAuthenticated()) {
+      console.log('👤 User authenticated, loading watchlist from API...');
+      loadWatchlist();
+    } else if (!user) {
+      console.log('👤 User logged out, clearing watchlist');
+      setWatchlist([]);
+    }
+  }, [user, authService]);
+
   const loadWatchlist = async () => {
     try {
       setLoading(true);
@@ -40,8 +61,15 @@ export const WatchlistProvider = ({ children }) => {
       // Only load from API if user is authenticated
       if (watchlistService && authService.isAuthenticated()) {
         try {
+          console.log('📡 Calling watchlist API: https://etf-scanner-backend.onrender.com/api/user/watchlist');
+          if (Reactotron) {
+            Reactotron.log('🚀 Loading user watchlist from API');
+          }
           const apiWatchlist = await watchlistService.getWatchlist();
-          console.log('API watchlist response:', apiWatchlist);
+          console.log('✅ API watchlist response received:', apiWatchlist);
+          if (Reactotron) {
+            Reactotron.log('📋 Watchlist API Response', apiWatchlist);
+          }
           
           // Handle different response formats
           let watchlistArray = [];
@@ -57,10 +85,11 @@ export const WatchlistProvider = ({ children }) => {
             watchlistArray = [];
           }
           
-          console.log('Processed watchlist array:', watchlistArray);
+          console.log('📋 Processed watchlist array:', watchlistArray);
           setWatchlist(watchlistArray);
+          console.log(`🎯 Successfully loaded ${watchlistArray.length} items to watchlist`);
         } catch (apiError) {
-          console.error('API watchlist load failed:', apiError);
+          console.error('❌ API watchlist load failed:', apiError);
           setWatchlist([]);
         }
       } else {

@@ -130,6 +130,10 @@ export const AuthProvider = ({ children }) => {
           console.log('Backend authentication successful');
           setUser(userInfo);
           await saveUserToStorage(userInfo, authResult.accessToken);
+          
+          // Trigger watchlist load after successful authentication
+          console.log('🚀 User authenticated, watchlist will be loaded automatically');
+          
           return userInfo;
         } else {
           throw new Error('Backend authentication failed');

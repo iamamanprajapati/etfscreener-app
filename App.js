@@ -11,6 +11,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 if (__DEV__) {
   require("./ReactotronConfig");
   require("./ReactotronTest");
+  require("./src/utils/testWatchlistIntegration");
 }
 
 // Try to import and initialize AdMob, but handle gracefully if it fails
