@@ -15,8 +15,7 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_WEB_CLIENT_ID": "1003388477747-3urp829413t8nh46luik0gg5up4363cj.apps.googleusercontent.com",
-        "EXPO_PUBLIC_IOS_CLIENT_ID": "1003388477747-bmm8f86solfeq2p7iptj67fplokd95cq.apps.googleusercontent.com",
-        "EXPO_PUBLIC_ANDROID_CLIENT_ID": "1003388477747-3urp829413t8nh46luik0gg5up4363cj.apps.googleusercontent.com"
+        "EXPO_PUBLIC_IOS_CLIENT_ID": "1003388477747-bmm8f86solfeq2p7iptj67fplokd95cq.apps.googleusercontent.com"
       }
     }
   },

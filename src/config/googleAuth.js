@@ -8,9 +8,6 @@ export const GOOGLE_AUTH_CONFIG = {
   // iOS Client ID
   iosClientId: process.env.EXPO_PUBLIC_IOS_CLIENT_ID || '1003388477747-bmm8f86solfeq2p7iptj67fplokd95cq.apps.googleusercontent.com',
   
-  // Android Client ID (REQUIRED for Android production builds)
-  androidClientId: process.env.EXPO_PUBLIC_ANDROID_CLIENT_ID || '1003388477747-3urp829413t8nh46luik0gg5up4363cj.apps.googleusercontent.com',
-  
   // Scopes
   scopes: ['profile', 'email'],
   
