@@ -328,19 +328,6 @@ const WatchlistScreen = () => {
     return scrollableColumns.reduce((total, col) => total + col.width, 0);
   }, [visibleColumns]);
 
-  // Calculate dynamic table height based on content
-  const tableHeight = useMemo(() => {
-    const itemCount = processedWatchlistData.length;
-    const headerHeight = 40; // Header height
-    const rowHeight = 40; // Row height
-    const minHeight = 200; // Minimum table height
-    const maxHeight = 600; // Maximum table height
-    
-    if (itemCount === 0) return minHeight;
-    
-    const calculatedHeight = headerHeight + (itemCount * rowHeight);
-    return Math.max(minHeight, Math.min(maxHeight, calculatedHeight));
-  }, [processedWatchlistData.length]);
 
   const filteredETFs = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -359,106 +346,7 @@ const WatchlistScreen = () => {
       });
   }, [etfData, searchQuery, isInWatchlist]);
 
-  const renderTableHeader = () => (
-    <View style={[styles.tableHeader, { backgroundColor: colors.tableHeader, borderBottomColor: colors.tableBorder }]}>
-      {visibleColumns.map((column) => {
-        const isActive = sortConfig.key === column.key;
-        const isSelected = selectedColumn === column.key;
-        
-        return (
-      <TouchableOpacity
-            key={column.key}
-            style={[
-              styles.headerCell,
-              column.numeric && styles.numericHeaderCell,
-              isActive && { backgroundColor: colors.primaryLight },
-              isSelected && { backgroundColor: colors.primary },
-              { 
-                width: column.width,
-                backgroundColor: isSelected ? colors.primary : colors.tableHeader,
-                borderRightColor: colors.tableBorder
-              }
-            ]}
-            onPress={() => {
-              handleSort(column.key);
-              handleColumnSelect(column.key);
-            }}
-          >
-            <View style={styles.headerContent}>
-              <Text style={[
-                styles.headerText, 
-                { color: isSelected ? '#fff' : colors.text }
-              ]}>
-                {column.label}
-              </Text>
-              <Text style={[
-                styles.sortIndicator, 
-                { color: isSelected ? '#fff' : colors.textSecondary }
-              ]}>
-                {isActive ? (sortConfig.dir === 'asc' ? '▲' : '▼') : '⇅'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
 
-  const renderTableRow = (item) => {
-    return (
-      <View
-        key={item.symbol}
-        style={[
-          styles.tableRow, 
-          { backgroundColor: colors.tableRow, borderBottomColor: colors.tableBorderLight }
-        ]}
-      >
-        {visibleColumns.map((column) => {
-          const isSymbolColumn = column.key === 'symbol';
-          const value = item[column.key];
-          const renderedValue = column.render ? column.render(value, item) : (value ?? '—');
-          
-          if (isSymbolColumn) {
-            return (
-              <View key={column.key} style={[styles.tableCell, { width: column.width, borderRightColor: colors.tableBorderLight }]}>
-                <TouchableOpacity
-                  style={styles.symbolButton}
-                  onPress={() => handleRowPress(item.symbol)}
-      >
-        <Text style={[styles.symbolText, { color: colors.primary }]}>{getDisplaySymbol(item.symbol)}</Text>
-      </TouchableOpacity>
-      </View>
-            );
-          }
-      
-          return (
-            <View key={column.key} style={[styles.tableCell, column.numeric && styles.numericCell, { width: column.width, borderRightColor: colors.tableBorderLight }]}>
-          <Text style={[
-                styles.cellText,
-            { color: colors.text },
-                // Make all percentage columns bold for maximum visibility
-                (column.key === 'changePercent' || column.key === 'weeklyReturn' || 
-                 column.key === 'monthlyReturn' || column.key === 'yearlyReturn' || 
-                 column.key === 'twoYearReturn') && { fontWeight: '700' },
-                column.key === 'changePercent' && value > 0 && { color: colors.positive },
-                column.key === 'changePercent' && value < 0 && { color: colors.negative },
-                column.key === 'weeklyReturn' && value > 0 && { color: colors.positive },
-                column.key === 'weeklyReturn' && value < 0 && { color: colors.negative },
-                column.key === 'monthlyReturn' && value > 0 && { color: colors.positive },
-                column.key === 'monthlyReturn' && value < 0 && { color: colors.negative },
-                column.key === 'yearlyReturn' && value > 0 && { color: colors.positive },
-                column.key === 'yearlyReturn' && value < 0 && { color: colors.negative },
-                column.key === 'twoYearReturn' && value > 0 && { color: colors.positive },
-                column.key === 'twoYearReturn' && value < 0 && { color: colors.negative },
-              ]}>
-                {renderedValue}
-          </Text>
-      </View>
-          );
-        })}
-      </View>
-    );
-  };
 
   const renderHeader = () => (
     <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
@@ -647,7 +535,7 @@ const WatchlistScreen = () => {
           <View style={[styles.tableContainer, { backgroundColor: colors.background }]}>
             {renderHeader()}
             
-            <View style={[styles.tableWrapper, { backgroundColor: colors.surface, borderColor: colors.border, height: tableHeight }]}>
+            <View style={[styles.tableWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               {/* Fixed Symbol Column */}
               <View style={[styles.fixedColumn, { backgroundColor: colors.surface, borderRightColor: colors.border }]}>
                 {/* Fixed Symbol Header */}
@@ -671,8 +559,8 @@ const WatchlistScreen = () => {
                 {/* Fixed Symbol Rows */}
                 <ScrollView 
                   ref={fixedColumnScrollRef}
-              showsVerticalScrollIndicator={false}
-                  style={[styles.fixedColumnScroll, { height: tableHeight - 40 }]}
+                  showsVerticalScrollIndicator={false}
+                  style={styles.fixedColumnScroll}
                   onScroll={handleFixedColumnScroll}
                   scrollEventThrottle={16}
                   removeClippedSubviews={true}
@@ -685,7 +573,7 @@ const WatchlistScreen = () => {
                   }
                 >
                   {processedWatchlistData.length === 0 ? (
-                    <View style={[styles.emptyState, { height: tableHeight - 40 }]}>
+                    <View style={[styles.emptyState, { height: 200 }]}>
                       <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                         {isLoading ? 'Loading...' : 'No ETFs match your search.'}
                       </Text>
@@ -726,10 +614,10 @@ const WatchlistScreen = () => {
                             styles.headerCell,
                             column.numeric && styles.numericHeaderCell,
                             isActive && { backgroundColor: colors.primaryLight },
-                            isSelected && { backgroundColor: colors.primary },
+                            isSelected && { backgroundColor: colors.primaryHeader },
                             { 
                               width: column.width,
-                              backgroundColor: isSelected ? colors.primary : colors.tableHeader,
+                              backgroundColor: isSelected ? colors.primaryHeader : colors.tableHeader,
                               borderRightColor: colors.tableBorder
                             }
                           ]}
@@ -761,13 +649,13 @@ const WatchlistScreen = () => {
                   <ScrollView 
                     ref={dataColumnsScrollRef}
                     showsVerticalScrollIndicator={true}
-                    style={[styles.verticalScroll, { height: tableHeight - 40 }]}
+                    style={styles.verticalScroll}
                     onScroll={handleDataColumnsScroll}
                     scrollEventThrottle={16}
                     removeClippedSubviews={true}
                   >
                     {processedWatchlistData.length === 0 ? (
-                      <View style={[styles.emptyState, { height: tableHeight - 40 }]}>
+                      <View style={[styles.emptyState, { height: 200 }]}>
                         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                           {isLoading ? 'Loading...' : 'No ETFs match your search.'}
                         </Text>
@@ -889,18 +777,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   
-  // Table Styles - matching dashboard
+  // Table Styles - matching dashboard exactly
   tableContainer: {
     flex: 1,
-    backgroundColor: '#f9fafb',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
     gap: 12,
   },
   searchContainer: {
@@ -934,18 +819,17 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontSize: 14,
     fontWeight: '500',
-    color: '#2563eb',
   },
   
+  // Table Styles
   tableWrapper: {
+    flex: 1,
     flexDirection: 'row',
     marginHorizontal: 8,
     marginVertical: 12,
     borderWidth: 1,
     borderRadius: 8,
     overflow: 'hidden',
-    minHeight: 200,
-    maxHeight: 600,
   },
   fixedColumn: {
     width: 120,
@@ -953,18 +837,21 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   fixedHeaderCell: {
-    height: 40,
+    height: 35,
     paddingHorizontal: 8,
     justifyContent: 'center',
+    backgroundColor: '#f8fafc',
     borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
   fixedColumnScroll: {
-    flex: 1,
+    maxHeight: 700,
+    // Performance optimizations
     overScrollMode: 'never',
     bounces: false,
   },
   fixedRowCell: {
-    height: 40,
+    height: 30,
     paddingVertical: 1,
     paddingHorizontal: 8,
     justifyContent: 'center',
@@ -977,7 +864,8 @@ const styles = StyleSheet.create({
   scrollableContent: {
   },
   verticalScroll: {
-    flex: 1,
+    maxHeight: 700, // Increased height to show more rows
+    // Performance optimizations
     overScrollMode: 'never',
     bounces: false,
   },
@@ -985,20 +873,26 @@ const styles = StyleSheet.create({
   // Table Header
   tableHeader: {
     flexDirection: 'row',
+    backgroundColor: '#f8fafc',
     borderBottomWidth: 1,
-    height: 40,
+    borderBottomColor: '#e5e7eb',
+    height: 30, // Fixed header height
   },
   scrollableHeader: {
     flexDirection: 'row',
-    height: 40,
+    height: 35,
+    backgroundColor: '#f8fafc',
     borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
   headerCell: {
     paddingHorizontal: 8,
     borderRightWidth: 1,
-    width: 100,
+    borderRightColor: '#e5e7eb',
+    width: 100, // Fixed width for consistent alignment
     justifyContent: 'center',
-    height: 40,
+    backgroundColor: '#f8fafc',
+    height: 35, // Match header height,
     borderRadius: 8,
   },
   headerContent: {
@@ -1025,11 +919,11 @@ const styles = StyleSheet.create({
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    height: 40,
+    height: 30, // Fixed row height to match header
   },
   scrollableRow: {
     flexDirection: 'row',
-    height: 40,
+    height: 30,
     borderBottomWidth: 1,
   },
   tableCell: {
@@ -1037,12 +931,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRightWidth: 1,
     borderRightColor: '#e5e7eb',
-    width: 100,
+    width: 100, // Fixed width to match header cells
     justifyContent: 'center',
-    height: 40,
+    height: 30, // Match row height
   },
   numericCell: {
-    alignItems: 'flex-end',
+    // alignItems: 'flex-end',
   },
   cellText: {
     fontSize: 12,
@@ -1054,7 +948,6 @@ const styles = StyleSheet.create({
   symbolText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#2563eb',
   },
   
   // Empty State
