@@ -7,6 +7,12 @@ import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { AuthProvider } from './src/contexts/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
+// Import Reactotron in development mode
+if (__DEV__) {
+  require("./ReactotronConfig");
+  require("./ReactotronTest");
+}
+
 // Try to import and initialize AdMob, but handle gracefully if it fails
 let mobileAds = null;
 let MaxAdContentRating = null;
@@ -71,6 +77,11 @@ function AppContent() {
 
 export default function App() {
   useEffect(() => {
+    // Test Reactotron connection in development
+    if (__DEV__) {
+      console.log("🚀 ETF Screener App started - Reactotron should be connected!");
+    }
+    
     // Defer Google Mobile Ads SDK initialization until after initial interactions
     const task = InteractionManager.runAfterInteractions(() => {
       if (mobileAds && MaxAdContentRating) {

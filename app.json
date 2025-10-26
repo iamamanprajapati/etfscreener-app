@@ -17,10 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.etfscreener.indianetf",
-      "buildNumber": "1",
-      "urlSchemes": [
-        "com.googleusercontent.apps.1003388477747-bmm8f86solfeq2p7iptj67fplokd95cq"
-      ]
+      "buildNumber": "1"
     },
     "android": {
       "package": "com.etfscreener.indianetf",
@@ -52,15 +49,13 @@
           "androidAppId": "ca-app-pub-4785007038647034~9096882156",
           "iosAppId": "ca-app-pub-4785007038647034~9096882156"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {
         "projectId": "e07dc36d-54b8-4d4b-8c11-b373a53d72c3"
       }
-    },
-    "react-native-google-mobile-ads": {
-      "android_app_id": "ca-app-pub-4785007038647034~9096882156"
     },
     "owner": "aman12863"
   }
