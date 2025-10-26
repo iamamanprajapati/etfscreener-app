@@ -17,6 +17,7 @@ import { SUMMARY_API_URL, PRICES_API_URL, parseNumber, formatters, renderDownFro
 import { getDisplaySymbol } from '../utils/symbolUtils';
 import { useTheme } from '../contexts/ThemeContext';
 import { useWatchlist } from '../contexts/WatchlistContext';
+import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -25,6 +26,7 @@ const CompareScreen = () => {
   const navigation = useNavigation();
   const { colors } = useTheme();
   const { addToWatchlist, isInWatchlist } = useWatchlist();
+  const { user } = useAuth();
   const { symbols } = route.params || {};
   
   const [data, setData] = useState([]);
@@ -213,6 +215,18 @@ const CompareScreen = () => {
   }, []);
 
   const handleAddToWatchlist = useCallback(async (symbol) => {
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'Please sign in to add ETFs to your watchlist.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => navigation.navigate('Watchlist') }
+        ]
+      );
+      return;
+    }
+
     try {
       const etf = data.find(e => e.symbol === symbol);
       const price = pricesData[symbol];
@@ -229,7 +243,7 @@ const CompareScreen = () => {
       console.error('Error adding to watchlist:', error);
       Alert.alert('Error', 'Failed to add ETF to watchlist. Please try again.');
     }
-  }, [data, pricesData, addToWatchlist]);
+  }, [data, pricesData, addToWatchlist, user, navigation]);
 
   const selectedData = useMemo(() => {
     const map = new Map(data.map((r) => [r.symbol, r]));
@@ -297,7 +311,7 @@ const CompareScreen = () => {
             <Ionicons name="eye-outline" size={16} color={colors.primary} />
           </TouchableOpacity>
           
-          {!inWatchlist && (
+          {!inWatchlist && user && (
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: colors.surfaceSecondary }]}
               onPress={() => handleAddToWatchlist(item.symbol)}

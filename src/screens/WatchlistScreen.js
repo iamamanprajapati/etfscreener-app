@@ -228,6 +228,21 @@ const WatchlistScreen = () => {
     }
   };
 
+  const handleAddButtonPress = () => {
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'Please sign in to add ETFs to your watchlist.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => {/* User can sign in using the Google Sign-In component below */} }
+        ]
+      );
+      return;
+    }
+    setShowAddModal(true);
+  };
+
   const handleRemoveFromWatchlist = async (symbol) => {
     Alert.alert(
       'Remove from Watchlist',
@@ -508,7 +523,7 @@ const WatchlistScreen = () => {
         <View style={[styles.actionsBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
           <TouchableOpacity 
             style={[styles.addButton, { backgroundColor: colors.primary }]}
-            onPress={() => setShowAddModal(true)}
+            onPress={handleAddButtonPress}
           >
             <Ionicons name="add" size={20} color={colors.surface} />
             <Text style={[styles.addButtonText, { color: colors.surface }]}>Add ETF</Text>
@@ -526,7 +541,7 @@ const WatchlistScreen = () => {
             <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>Start adding ETFs to track their performance</Text>
             <TouchableOpacity 
               style={[styles.addFirstButton, { backgroundColor: colors.primary }]}
-              onPress={() => setShowAddModal(true)}
+              onPress={handleAddButtonPress}
             >
               <Text style={[styles.addFirstButtonText, { color: colors.surface }]}>Add your first ETF</Text>
             </TouchableOpacity>

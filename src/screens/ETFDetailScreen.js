@@ -15,6 +15,7 @@ import { getETFDescription, getETFCategory } from '../data/etfDescriptions';
 import { getDisplaySymbol } from '../utils/symbolUtils';
 import { useTheme } from '../contexts/ThemeContext';
 import { useWatchlist } from '../contexts/WatchlistContext';
+import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/LoadingSpinner';
 import MetricsCards from '../components/MetricsCards';
@@ -24,6 +25,7 @@ const ETFDetailScreen = () => {
   const navigation = useNavigation();
   const { colors } = useTheme();
   const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
+  const { user } = useAuth();
   const { symbol } = route.params;
   
   const [etfData, setEtfData] = useState(null);
@@ -108,6 +110,18 @@ const ETFDetailScreen = () => {
   };
 
   const handleWatchlistToggle = async () => {
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'Please sign in to manage your watchlist.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => navigation.navigate('Watchlist') }
+        ]
+      );
+      return;
+    }
+
     try {
       if (isInWatchlist(symbol)) {
         await removeFromWatchlist(symbol);
@@ -185,9 +199,9 @@ const ETFDetailScreen = () => {
             onPress={handleWatchlistToggle}
           >
             <Ionicons 
-              name={isInWatchlist(symbol) ? "star" : "star-outline"} 
+              name={!user ? "lock-closed-outline" : (isInWatchlist(symbol) ? "star" : "star-outline")} 
               size={24} 
-              color={isInWatchlist(symbol) ? "#fbbf24" : colors.text} 
+              color={!user ? colors.textSecondary : (isInWatchlist(symbol) ? "#fbbf24" : colors.text)} 
             />
           </TouchableOpacity>
         }
