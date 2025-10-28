@@ -8,7 +8,9 @@ export const GOOGLE_AUTH_CONFIG = {
   // iOS Client ID
   iosClientId: process.env.EXPO_PUBLIC_IOS_CLIENT_ID || '1003388477747-bmm8f86solfeq2p7iptj67fplokd95cq.apps.googleusercontent.com',
   
-  // Android Client ID (REQUIRED for Android production builds)
+  // Android Client ID (REQUIRED for Android builds)
+  // Debug: 1003388477747-9rs288bhqnt3j8djvbs4flmiijas8ptj.apps.googleusercontent.com
+  // Production: 1003388477747-7jfu93vgsuori340pe9dlagt3ogpncod.apps.googleusercontent.com
   androidClientId: process.env.EXPO_PUBLIC_ANDROID_CLIENT_ID || '1003388477747-7jfu93vgsuori340pe9dlagt3ogpncod.apps.googleusercontent.com',
   
   // Scopes
