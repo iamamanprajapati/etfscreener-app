@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { Animated, View, InteractionManager } from 'react-native';
+import { Animated, View, InteractionManager, Modal, Text, TouchableOpacity, Linking } from 'react-native';
 import { WatchlistProvider } from './src/contexts/WatchlistContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { AuthProvider } from './src/contexts/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import { fetchForceUpdateConfig } from './src/services/remoteConfig';
 
 // Import Reactotron in development mode
 if (__DEV__) {
@@ -27,6 +28,20 @@ try {
 
 function AppContent() {
   const { isDarkMode, isTransitioning, nextTheme, fadeOutAnim, fadeInAnim, colors, nextColors } = useTheme();
+  const [forceUpdate, setForceUpdate] = useState({ visible: false, title: '', message: '', url: '' });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const cfg = await fetchForceUpdateConfig();
+        if (cfg.needsUpdate) {
+          setForceUpdate({ visible: true, title: cfg.updateTitle, message: cfg.updateMessage, url: cfg.storeUrl });
+        }
+      } catch (e) {
+        // Silent fail – app continues if Remote Config fetch fails
+      }
+    })();
+  }, []);
   
   if (isTransitioning && nextColors) {
     return (
@@ -72,6 +87,25 @@ function AppContent() {
     <NavigationContainer>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
       <AppNavigator />
+
+      <Modal transparent visible={forceUpdate.visible} animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ backgroundColor: '#fff', marginHorizontal: 24, borderRadius: 12, padding: 20, width: '86%' }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 8 }}>{forceUpdate.title || 'Update Required'}</Text>
+            <Text style={{ fontSize: 15, color: '#333', marginBottom: 16 }}>{forceUpdate.message || 'Please update the app to continue.'}</Text>
+            <TouchableOpacity
+              onPress={() => {
+                if (forceUpdate.url) {
+                  Linking.openURL(forceUpdate.url);
+                }
+              }}
+              style={{ backgroundColor: '#1e88e5', paddingVertical: 12, borderRadius: 8, alignItems: 'center' }}
+            >
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Update</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </NavigationContainer>
   );
 }

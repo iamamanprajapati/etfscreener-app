@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "150770154329",
+    "project_id": "etfscreen-d437a",
+    "storage_bucket": "etfscreen-d437a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:150770154329:android:885eabce93fdea9553ea48",
+        "android_client_info": {
+          "package_name": "com.etfscreener.indianetf"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1EqZkprquWbypdE-xp67nynSsw_FHQnU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      },
+      "admob_app_id": "ca-app-pub-4785007038647034~9096882156"
+    }
+  ],
+  "configuration_version": "1"
+}
