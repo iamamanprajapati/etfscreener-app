@@ -21,7 +21,7 @@
     },
     "android": {
       "package": "com.etfscreener.indianetf",
-      "versionCode": 11,
+      "versionCode": 12,
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE",
