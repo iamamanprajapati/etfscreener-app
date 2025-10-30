@@ -30,8 +30,8 @@ const AdMobBanner = ({ style }) => {
     ? (TestIds ? TestIds.BANNER : 'ca-app-pub-3940256099942544/6300978111')
     : productionAdUnitId;
 
-  // If AdMob is not available or there's an error, don't show anything
-  if (!BannerAd || adError) {
+  // If AdMob is not available, don't show anything
+  if (!BannerAd) {
     return null;
   }
 
@@ -40,9 +40,6 @@ const AdMobBanner = ({ style }) => {
       <BannerAd
         unitId={adUnitId}
         size={BannerAdSize ? BannerAdSize.ANCHORED_ADAPTIVE_BANNER : 'LARGE_BANNER'}
-        requestOptions={{
-          requestNonPersonalizedAdsOnly: true,
-        }}
         onAdLoaded={() => {
           console.log('Banner ad loaded successfully');
           setAdError(false);
@@ -51,6 +48,7 @@ const AdMobBanner = ({ style }) => {
           console.log('Banner ad failed to load:', error);
           console.log('Error code:', error.code);
           console.log('Error message:', error.message);
+          // Keep the view mounted so the SDK can retry and the slot stays visible
           setAdError(true);
         }}
       />

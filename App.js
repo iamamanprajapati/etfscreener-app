@@ -113,21 +113,15 @@ function AppContent() {
 export default function App() {
   useEffect(() => {
     // Test Reactotron connection in development
-    if (__DEV__) {
+    if (!__DEV__) {
       console.log("🚀 ETF Screener App started - Reactotron should be connected!");
     }
     
     // Defer Google Mobile Ads SDK initialization until after initial interactions
     const task = InteractionManager.runAfterInteractions(() => {
-      if (mobileAds && MaxAdContentRating) {
+      if (mobileAds) {
         mobileAds()
-          .setRequestConfiguration({
-            maxAdContentRating: MaxAdContentRating.G,
-            tagForChildDirectedTreatment: false,
-            tagForUnderAgeOfConsent: false,
-            testDeviceIdentifiers: ['EMULATOR'], // Add your device ID here
-          })
-          .then(() => mobileAds().initialize())
+          .initialize()
           .then(adapterStatuses => {
             console.log('Google Mobile Ads initialized successfully');
             console.log('Adapter statuses:', adapterStatuses);

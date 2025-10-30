@@ -37,7 +37,7 @@ export async function fetchForceUpdateConfig() {
 
     // Reasonable fetch intervals
     await rc.setConfigSettings({
-      minimumFetchIntervalMillis: __DEV__ ? 0 : 60 * 60 * 1000
+      minimumFetchIntervalMillis: !__DEV__ ? 0 : 60 * 60 * 1000
     });
 
     // Fetch and activate
