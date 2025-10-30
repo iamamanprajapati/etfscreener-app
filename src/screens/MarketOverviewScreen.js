@@ -291,6 +291,10 @@ const MarketOverviewScreen = () => {
   const renderFooter = () => (
     <>
       {renderQuickStats()}
+      <View style={[styles.footerAdContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+        <AdMobBanner />
+      </View>
+      <View style={{ height: 8 }} />
     </>
   );
 
@@ -308,11 +312,6 @@ const MarketOverviewScreen = () => {
         ListHeaderComponent={renderHeader}
         ListFooterComponent={renderFooter}
         style={styles.content}
-      />
-      
-      {/* AdMob Banner - positioned above bottom tabs */}
-      <AdMobBanner 
-        style={[styles.bannerContainer, { backgroundColor: colors.surface }]} 
       />
     </View>
   );
@@ -422,17 +421,11 @@ const styles = StyleSheet.create({
     color: '#1f2937',
   },
   
-  // Banner Styles
-  bannerContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingBottom: 12,
-    paddingTop: 8,
+  // Banner Footer (non-interactive container to avoid accidental clicks)
+  footerAdContainer: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    // Let AdMob handle its own sizing
   },
 });
 

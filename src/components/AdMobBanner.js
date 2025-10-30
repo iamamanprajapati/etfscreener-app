@@ -6,11 +6,13 @@ import { useTheme } from '../contexts/ThemeContext';
 let BannerAd = null;
 let TestIds = null;
 let mobileAds = null;
+let BannerAdSize = null;
 try {
   const AdMobModule = require('react-native-google-mobile-ads');
   BannerAd = AdMobModule.BannerAd;
   TestIds = AdMobModule.TestIds;
   mobileAds = AdMobModule.default;
+  BannerAdSize = AdMobModule.BannerAdSize;
 } catch (error) {
   console.log('AdMob not available:', error.message);
 }
@@ -33,7 +35,7 @@ const AdMobBanner = ({ style }) => {
     <View style={[styles.container, { backgroundColor: colors.surface }, style]}>
       <BannerAd
         unitId={adUnitId}
-        size="LARGE_BANNER"
+        size={BannerAdSize ? BannerAdSize.ANCHORED_ADAPTIVE_BANNER : 'LARGE_BANNER'}
         requestOptions={{
           requestNonPersonalizedAdsOnly: true,
         }}
