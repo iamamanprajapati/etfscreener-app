@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Try to import AdMob, but handle gracefully if it fails
@@ -21,10 +21,14 @@ const AdMobBanner = ({ style }) => {
   const { colors } = useTheme();
   const [adError, setAdError] = useState(false);
 
-  // Use test ads for development, real ads for production
-  const adUnitId = __DEV__ 
-    ? (TestIds ? TestIds.BANNER : 'ca-app-pub-3940256099942544/6300978111') // Test ad
-    : 'ca-app-pub-4785007038647034/7284719998'; // Your real ad unit ID
+  // Use test ads for development, real ads for production (platform-specific)
+  const productionAdUnitId = Platform.OS === 'ios'
+    ? 'ca-app-pub-4785007038647034/9389395735' // iOS banner unit
+    : 'ca-app-pub-4785007038647034/7284719998'; // Android banner unit
+
+  const adUnitId = __DEV__
+    ? (TestIds ? TestIds.BANNER : 'ca-app-pub-3940256099942544/6300978111')
+    : productionAdUnitId;
 
   // If AdMob is not available or there's an error, don't show anything
   if (!BannerAd || adError) {
