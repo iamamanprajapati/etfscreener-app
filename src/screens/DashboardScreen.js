@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import {
   View,
   Text,
@@ -104,7 +104,7 @@ const DashboardScreen = () => {
     });
   };
 
-  // Fetch data effect with caching
+  // Fetch data effect with caching - optimized for immediate display
   const fetchData = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
@@ -114,61 +114,83 @@ const DashboardScreen = () => {
       }
       setErrorMessage('');
 
-      // Load both summary and prices data together to avoid race conditions
-      setLoadingStatus('Loading ETF summary data...');
-      let summaryData = await cacheUtils.getCachedData();
-      
-      // If no summary cached, fetch it
-      if (!summaryData) {
-        setLoadingStatus('Fetching ETF summary from server...');
-        const summaryResp = await fetch(SUMMARY_API_URL, { headers: { 'Accept': 'application/json' } });
-        if (!summaryResp.ok) throw new Error(`HTTP ${summaryResp.status}: ${summaryResp.statusText}`);
-        summaryData = await summaryResp.json();
-        await cacheUtils.setCachedData(summaryData);
+      // Load cached data first and display immediately for better UX
+      setLoadingStatus('Loading cached data...');
+      const [cachedSummary, cachedPrices, isPricesCacheValid] = await Promise.all([
+        cacheUtils.getCachedData(),
+        cacheUtils.getCachedPrices(),
+        cacheUtils.isPricesCacheValid()
+      ]);
+
+      // Show cached data immediately if available (much faster!)
+      if (cachedSummary) {
+        const cachedPricesData = (cachedPrices && isPricesCacheValid) ? cachedPrices : {};
+        setTableData(processRawData(cachedSummary, cachedPricesData));
+        setIsLoading(false); // Show UI immediately with cached data
       }
 
-      setLoadingStatus('Loading price data...');
-      let pricesData = await cacheUtils.getCachedPrices();
+      // Then fetch fresh data in the background (parallel requests)
+      setLoadingStatus('Fetching latest data...');
+      const [summaryData, pricesData] = await Promise.allSettled([
+        // Fetch summary if not cached or if refresh
+        (!cachedSummary || isRefresh) 
+          ? fetch(SUMMARY_API_URL, { headers: { 'Accept': 'application/json' } })
+              .then(resp => {
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+                return resp.json();
+              })
+              .then(data => {
+                cacheUtils.setCachedData(data);
+                return data;
+              })
+          : Promise.resolve(cachedSummary),
+        
+        // Fetch prices if cache invalid or refresh
+        (!isPricesCacheValid || !cachedPrices || isRefresh)
+          ? fetch(PRICES_API_URL)
+              .then(resp => {
+                if (!resp.ok) return null;
+                return resp.json();
+              })
+              .then(pricesArray => {
+                if (!pricesArray) return cachedPrices || {};
+                const freshPricesData = pricesArray.reduce((acc, item) => {
+                  const symbol = item.key;
+                  if (symbol) {
+                    acc[symbol] = {
+                      currentPrice: item.currentPrice,
+                      changePercent: item.changePercent,
+                      change: item.change,
+                      volume: item.volume,
+                      previousClose: item.previousClose
+                    };
+                  }
+                  return acc;
+                }, {});
+                if (Object.keys(freshPricesData).length > 0) {
+                  cacheUtils.setCachedPrices(freshPricesData);
+                  return freshPricesData;
+                }
+                return cachedPrices || {};
+              })
+              .catch(error => {
+                console.warn('Failed to fetch prices, using cached data if available:', error);
+                return cachedPrices || {};
+              })
+          : Promise.resolve(cachedPrices || {})
+      ]);
 
-      // Check if prices cache is valid, if not fetch fresh prices
-      const isPricesCacheValid = await cacheUtils.isPricesCacheValid();
-      if (!pricesData || !isPricesCacheValid) {
-        setLoadingStatus('Fetching latest prices...');
-        try {
-          const resp = await fetch(PRICES_API_URL);
-          if (resp.ok) {
-            const pricesArray = await resp.json();
-            const freshPricesData = pricesArray.reduce((acc, item) => {
-              const symbol = item.key;
-              if (symbol) {
-                acc[symbol] = {
-                  currentPrice: item.currentPrice,
-                  changePercent: item.changePercent,
-                  change: item.change,
-                  volume: item.volume,
-                  previousClose: item.previousClose
-                };
-              }
-              return acc;
-            }, {});
-            if (Object.keys(freshPricesData).length > 0) {
-              pricesData = freshPricesData;
-              await cacheUtils.setCachedPrices(pricesData);
-            }
-          }
-        } catch (error) {
-          console.warn('Failed to fetch prices, using cached data if available:', error);
-        }
-      }
+      // Process results
+      const finalSummary = summaryData.status === 'fulfilled' ? summaryData.value : cachedSummary;
+      const finalPrices = pricesData.status === 'fulfilled' ? pricesData.value : (cachedPrices || {});
 
-      setLoadingStatus('Processing data...');
-
-      // Only render when we have both summary and prices data
-      if (summaryData && pricesData) {
-        setTableData(processRawData(summaryData, pricesData));
-      } else if (summaryData) {
-        // Fallback: render with summary only if prices fail
-        setTableData(processRawData(summaryData, {}));
+      // Update with fresh data
+      if (finalSummary && finalPrices) {
+        setTableData(processRawData(finalSummary, finalPrices));
+      } else if (finalSummary) {
+        setTableData(processRawData(finalSummary, {}));
+      } else if (!cachedSummary) {
+        throw new Error('Failed to fetch summary data');
       }
     } catch (error) {
       setErrorMessage(error.message || 'Failed to fetch data');
@@ -675,4 +697,4 @@ const styles = StyleSheet.create({
   
 });
 
-export default DashboardScreen;
+export default memo(DashboardScreen);

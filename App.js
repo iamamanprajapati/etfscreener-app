@@ -31,16 +31,20 @@ function AppContent() {
   const [forceUpdate, setForceUpdate] = useState({ visible: false, title: '', message: '', url: '' });
 
   useEffect(() => {
-    (async () => {
-      try {
-        const cfg = await fetchForceUpdateConfig();
-        if (cfg.needsUpdate) {
-          setForceUpdate({ visible: true, title: cfg.updateTitle, message: cfg.updateMessage, url: cfg.storeUrl });
+    // Defer Remote Config fetch until after initial interactions to improve startup time
+    const task = InteractionManager.runAfterInteractions(() => {
+      (async () => {
+        try {
+          const cfg = await fetchForceUpdateConfig();
+          if (cfg.needsUpdate) {
+            setForceUpdate({ visible: true, title: cfg.updateTitle, message: cfg.updateMessage, url: cfg.storeUrl });
+          }
+        } catch (e) {
+          // Silent fail – app continues if Remote Config fetch fails
         }
-      } catch (e) {
-        // Silent fail – app continues if Remote Config fetch fails
-      }
-    })();
+      })();
+    });
+    return () => task && task.cancel && task.cancel();
   }, []);
   
   if (isTransitioning && nextColors) {

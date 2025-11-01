@@ -16,36 +16,38 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start with false to not block initial render
   const [error, setError] = useState(null);
 
-  // Configure Google Sign-In
+  // Configure Google Sign-In and load user data in parallel
   useEffect(() => {
+    // Configure immediately (synchronous, fast)
     GoogleSignin.configure(GOOGLE_AUTH_CONFIG);
 
-    // Check if user is already signed in
-    checkSignInStatus();
-  }, []);
-
-  // Load user from storage on app start
-  useEffect(() => {
-    loadUserFromStorage();
+    // Load user data asynchronously without blocking render
+    (async () => {
+      // Load from storage first (fastest)
+      await loadUserFromStorage();
+      // Then check Google Sign-In status (slower, but non-blocking)
+      await checkSignInStatus();
+    })();
   }, []);
 
   // Load user from AsyncStorage
   const loadUserFromStorage = async () => {
     try {
-      const storedUser = await AsyncStorage.getItem('user');
-      const storedToken = await AsyncStorage.getItem('accessToken');
+      // Load both items in parallel for better performance
+      const [storedUser, storedToken] = await Promise.all([
+        AsyncStorage.getItem('user'),
+        AsyncStorage.getItem('accessToken')
+      ]);
       
       if (storedUser && storedToken) {
         const userData = JSON.parse(storedUser);
         setUser(userData);
         authService.setAccessToken(storedToken);
-        setLoading(false);
-      } else {
-        setLoading(false);
       }
+      setLoading(false);
     } catch (error) {
       console.log('Error loading user from storage:', error);
       setLoading(false);
@@ -103,9 +105,8 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       // User is not signed in, which is normal
       console.log('User not signed in:', error.message);
-    } finally {
-      setLoading(false);
     }
+    // Note: loading is set by loadUserFromStorage, don't set it here to avoid race condition
   };
 
   // Sign in with Google

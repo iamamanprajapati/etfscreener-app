@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { InteractionManager } from 'react-native';
 import WatchlistService from '../services/watchlistService';
 import { useAuth } from './AuthContext';
 
@@ -38,16 +39,27 @@ export const WatchlistProvider = ({ children }) => {
     }
   }, [authService]);
 
-  // Load watchlist from API or storage on app start
+  // Load watchlist from API or storage on app start - deferred to not block initial render
   useEffect(() => {
-    loadWatchlist();
+    if (!watchlistService) return;
+    
+    // Defer watchlist loading until after initial interactions to improve startup time
+    const task = InteractionManager.runAfterInteractions(() => {
+      loadWatchlist();
+    });
+    
+    return () => task && task.cancel && task.cancel();
   }, [watchlistService]);
 
-  // Load watchlist immediately when user authentication changes
+  // Load watchlist when user authentication changes - deferred to not block render
   useEffect(() => {
     if (user && authService.isAuthenticated()) {
       console.log('👤 User authenticated, loading watchlist from API...');
-      loadWatchlist();
+      // Defer to avoid blocking initial render
+      const task = InteractionManager.runAfterInteractions(() => {
+        loadWatchlist();
+      });
+      return () => task && task.cancel && task.cancel();
     } else if (!user) {
       console.log('👤 User logged out, clearing watchlist');
       setWatchlist([]);
