@@ -23,8 +23,8 @@ const AdMobBanner = ({ style }) => {
 
   // Use test ads for development, real ads for production (platform-specific)
   const productionAdUnitId = Platform.OS === 'ios'
-    ? 'ca-app-pub-4785007038647034/9389395735' // iOS banner unit
-    : 'ca-app-pub-4785007038647034/7284719998'; // Android banner unit
+    ? 'ca-app-pub-2318114935679256/7368849007' // iOS banner unit
+    : 'ca-app-pub-2318114935679256/4436505859'; // Android banner unit
 
   const adUnitId = __DEV__
     ? (TestIds ? TestIds.BANNER : 'ca-app-pub-3940256099942544/6300978111')

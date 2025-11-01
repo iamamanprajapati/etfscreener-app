@@ -46,8 +46,8 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-4785007038647034~9096882156",
-          "iosAppId": "ca-app-pub-4785007038647034~9096882156"
+          "androidAppId": "ca-app-pub-2318114935679256~5595891895",
+          "iosAppId": "ca-app-pub-2318114935679256~5595891895"
         }
       ],
       "expo-font"
