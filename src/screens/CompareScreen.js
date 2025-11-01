@@ -9,6 +9,7 @@ import {
   Alert,
   ScrollView,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +39,7 @@ const CompareScreen = () => {
   const [selected, setSelected] = useState([]);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: 'changePercent', dir: 'desc' });
+  const [loadingSymbols, setLoadingSymbols] = useState(new Set());
   
   const scrollViewRef = useRef(null);
 
@@ -227,6 +229,7 @@ const CompareScreen = () => {
       return;
     }
 
+    setLoadingSymbols(prev => new Set(prev).add(symbol));
     try {
       const etf = data.find(e => e.symbol === symbol);
       const price = pricesData[symbol];
@@ -242,6 +245,12 @@ const CompareScreen = () => {
     } catch (error) {
       console.error('Error adding to watchlist:', error);
       Alert.alert('Error', 'Failed to add ETF to watchlist. Please try again.');
+    } finally {
+      setLoadingSymbols(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(symbol);
+        return newSet;
+      });
     }
   }, [data, pricesData, addToWatchlist, user, navigation]);
 
@@ -277,6 +286,7 @@ const CompareScreen = () => {
     const isSelected = selected.includes(item.symbol);
     const isDisabled = !isSelected && selected.length >= MAX_SELECTION;
     const inWatchlist = isInWatchlist(item.symbol);
+    const isLoading = loadingSymbols.has(item.symbol);
     
     return (
       <View style={[
@@ -315,8 +325,13 @@ const CompareScreen = () => {
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: colors.surfaceSecondary }]}
               onPress={() => handleAddToWatchlist(item.symbol)}
+              disabled={isLoading}
             >
-              <Ionicons name="star-outline" size={16} color={colors.primary} />
+              {isLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Ionicons name="star-outline" size={16} color={colors.primary} />
+              )}
             </TouchableOpacity>
           )}
         </View>

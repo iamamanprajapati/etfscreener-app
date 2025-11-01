@@ -10,6 +10,7 @@ import {
   Alert,
   ScrollView,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,6 +46,7 @@ const WatchlistScreen = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'changePercent', dir: 'desc' });
   const [selectedColumn, setSelectedColumn] = useState('currentPrice');
   const [errorMessage, setErrorMessage] = useState('');
+  const [loadingSymbols, setLoadingSymbols] = useState(new Set());
   
   // Refs for scroll synchronization
   const fixedColumnScrollRef = useRef(null);
@@ -208,6 +210,7 @@ const WatchlistScreen = () => {
   }, [fetchData]);
 
   const handleAddToWatchlist = async (symbol) => {
+    setLoadingSymbols(prev => new Set(prev).add(symbol));
     try {
       const etf = etfData.find(e => e.symbol === symbol);
       const price = pricesData[symbol];
@@ -225,6 +228,12 @@ const WatchlistScreen = () => {
     } catch (error) {
       console.error('Error adding to watchlist:', error);
       Alert.alert('Error', 'Failed to add ETF to watchlist. Please try again.');
+    } finally {
+      setLoadingSymbols(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(symbol);
+        return newSet;
+      });
     }
   };
 
@@ -435,11 +444,13 @@ const WatchlistScreen = () => {
                 const currentPrice = priceInfo.currentPrice || item.details?.lastClosePrice;
                 const changePercent = priceInfo.changePercent;
                 const etfName = item.details?.name || '';
+                const isLoading = loadingSymbols.has(item.symbol);
                 
                 return (
                   <TouchableOpacity
                     style={[styles.suggestionItem, { borderBottomColor: colors.border }]}
                     onPress={() => handleAddToWatchlist(item.symbol)}
+                    disabled={isLoading}
                   >
                     <View style={styles.suggestionContent}>
                       <View style={styles.suggestionHeader}>
@@ -467,7 +478,11 @@ const WatchlistScreen = () => {
                         </Text>
                       )}
                     </View>
-                    <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+                    )}
                   </TouchableOpacity>
                 );
               }}

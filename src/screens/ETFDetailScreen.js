@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +33,7 @@ const ETFDetailScreen = () => {
   const [priceData, setPriceData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isWatchlistLoading, setIsWatchlistLoading] = useState(false);
 
   useEffect(() => {
     fetchETFData();
@@ -122,6 +124,7 @@ const ETFDetailScreen = () => {
       return;
     }
 
+    setIsWatchlistLoading(true);
     try {
       if (isInWatchlist(symbol)) {
         await removeFromWatchlist(symbol);
@@ -138,6 +141,8 @@ const ETFDetailScreen = () => {
     } catch (error) {
       console.error('Error toggling watchlist:', error);
       Alert.alert('Error', 'Failed to update watchlist. Please try again.');
+    } finally {
+      setIsWatchlistLoading(false);
     }
   };
 
@@ -197,12 +202,17 @@ const ETFDetailScreen = () => {
           <TouchableOpacity 
             style={[styles.watchlistButton, { backgroundColor: colors.surfaceSecondary }]}
             onPress={handleWatchlistToggle}
+            disabled={isWatchlistLoading}
           >
-            <Ionicons 
-              name={!user ? "lock-closed-outline" : (isInWatchlist(symbol) ? "star" : "star-outline")} 
-              size={24} 
-              color={!user ? colors.textSecondary : (isInWatchlist(symbol) ? "#fbbf24" : colors.text)} 
-            />
+            {isWatchlistLoading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Ionicons 
+                name={!user ? "lock-closed-outline" : (isInWatchlist(symbol) ? "star" : "star-outline")} 
+                size={24} 
+                color={!user ? colors.textSecondary : (isInWatchlist(symbol) ? "#fbbf24" : colors.text)} 
+              />
+            )}
           </TouchableOpacity>
         }
       />
