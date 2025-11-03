@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.etfscreener.indianetf",
-      "buildNumber": "13"
+      "buildNumber": "14"
     },
     "android": {
       "package": "com.etfscreener.indianetf",
