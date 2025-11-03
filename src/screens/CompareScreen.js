@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  TextInput,
   Alert,
   ScrollView,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import Text from '../components/CustomText';
+import TextInput from '../components/CustomTextInput';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { cacheUtils } from '../utils/cache';

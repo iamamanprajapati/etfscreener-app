@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { Animated, View, InteractionManager, Modal, Text, TouchableOpacity, Linking } from 'react-native';
+import { Animated, View, InteractionManager, Modal, TouchableOpacity, Linking } from 'react-native';
+import Text from './src/components/CustomText';
 import { WatchlistProvider } from './src/contexts/WatchlistContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { AuthProvider } from './src/contexts/AuthContext';

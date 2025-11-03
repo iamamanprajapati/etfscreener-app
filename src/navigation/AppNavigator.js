@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import Text from '../components/CustomText';
 
 // Import screens
 import DashboardScreen from '../screens/DashboardScreen';
@@ -19,6 +20,18 @@ const Stack = createStackNavigator();
 function MainTabNavigator() {
   const { colors } = useTheme();
   
+  // Helper function to get tab label
+  const getTabLabel = (routeName) => {
+    const labels = {
+      'Dashboard': 'Dashboard',
+      'Market': 'Market',
+      'Compare': 'Compare',
+      'Watchlist': 'Watchlist',
+      'Calculator': 'Calculator',
+    };
+    return labels[routeName] || routeName;
+  };
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -38,6 +51,20 @@ function MainTabNavigator() {
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarLabel: ({ focused, color }) => {
+          return (
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: focused ? '600' : '400',
+                color: color,
+                marginTop: 2,
+              }}
+            >
+              {getTabLabel(route.name)}
+            </Text>
+          );
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,

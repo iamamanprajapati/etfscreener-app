@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Alert,
 } from 'react-native';
+import Text from '../components/CustomText';
+import TextInput from '../components/CustomTextInput';
 import { Ionicons } from '@expo/vector-icons';
 import { xirr, formatRate, calculateCAGR } from '../utils/xirr';
 import { formatCurrency } from '../utils/helpers';

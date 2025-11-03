@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Text, Platform } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Try to import AdMob, but handle gracefully if it fails

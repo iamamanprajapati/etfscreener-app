@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   RefreshControl,
 } from 'react-native';
+import Text from '../components/CustomText';
+import TextInput from '../components/CustomTextInput';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { cacheUtils } from '../utils/cache';

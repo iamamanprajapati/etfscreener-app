@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { formatters, formatCurrency, formatLargeNumber } from '../utils/helpers';
 import { useTheme } from '../contexts/ThemeContext';
+import Text from './CustomText';
 
 const MetricsCards = ({ metrics, etfInfo, priceRange }) => {
   const { colors } = useTheme();

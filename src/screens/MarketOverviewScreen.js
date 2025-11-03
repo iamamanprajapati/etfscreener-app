@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
 } from 'react-native';
+import Text from '../components/CustomText';
 import { useNavigation } from '@react-navigation/native';
 import { PRICES_API_URL, SUMMARY_API_URL, parseNumber } from '../utils/helpers';
 import { useTheme } from '../contexts/ThemeContext';

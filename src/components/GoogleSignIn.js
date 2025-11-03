@@ -1,12 +1,12 @@
 import React from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
   Image,
 } from 'react-native';
+import Text from './CustomText';
 import {
   GoogleSignin,
   GoogleSigninButton,
