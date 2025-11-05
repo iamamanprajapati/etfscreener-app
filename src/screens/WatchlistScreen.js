@@ -23,6 +23,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/LoadingSpinner';
 import GoogleSignInComponent from '../components/GoogleSignIn';
+import AdMobBanner from '../components/AdMobBanner';
 
 const WatchlistScreen = () => {
   const navigation = useNavigation();
@@ -511,11 +512,22 @@ const WatchlistScreen = () => {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Header title="Watchlist" />
+        
+        {/* Top Banner Ad */}
+        <View style={[styles.topBannerAdContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <AdMobBanner />
+        </View>
+        
         <GoogleSignInComponent
           onSignIn={handleGoogleSignIn}
           user={user}
           loading={authLoading}
         />
+        
+        {/* Bottom Banner Ad */}
+        <View style={[styles.footerAdContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+          <AdMobBanner />
+        </View>
       </View>
     );
   }
@@ -532,6 +544,11 @@ const WatchlistScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Header title="Watchlist" />
+      
+      {/* Top Banner Ad */}
+      <View style={[styles.topBannerAdContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <AdMobBanner />
+      </View>
       
       <View style={styles.content}>
         {/* Watchlist Actions */}
@@ -732,6 +749,11 @@ const WatchlistScreen = () => {
         )}
 
         {renderAddModal()}
+        
+        {/* Banner Ad above bottom tabs */}
+        <View style={[styles.footerAdContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+          <AdMobBanner />
+        </View>
       </View>
       
       {errorMessage && (
@@ -1113,6 +1135,15 @@ const styles = StyleSheet.create({
   suggestionChange: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  
+  // Banner Footer (above bottom tabs)
+  footerAdContainer: {
+    borderTopWidth: 1,
+  },
+  // Top Banner Ad
+  topBannerAdContainer: {
+    borderBottomWidth: 1,
   },
 });
 

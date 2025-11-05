@@ -20,6 +20,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/LoadingSpinner';
 import MetricsCards from '../components/MetricsCards';
+import AdMobBanner from '../components/AdMobBanner';
 
 const ETFDetailScreen = () => {
   const route = useRoute();
@@ -218,6 +219,11 @@ const ETFDetailScreen = () => {
       />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Banner Ad below Header */}
+        <View style={[styles.topBannerAdContainer, { borderBottomColor: colors.border }]}>
+          <AdMobBanner />
+        </View>
+
         {/* Price Performance Overview */}
         <View style={[styles.priceOverview, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.priceHeader}>
@@ -340,6 +346,11 @@ const ETFDetailScreen = () => {
               </View>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Banner Ad */}
+        <View style={[styles.bannerAdContainer, { borderTopColor: colors.border }]}>
+          <AdMobBanner />
         </View>
       </ScrollView>
     </View>
@@ -593,6 +604,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#dc2626',
     textAlign: 'center',
+  },
+  topBannerAdContainer: {
+    borderBottomWidth: 1,
+  },
+  bannerAdContainer: {
+    borderTopWidth: 1,
   },
 });
 

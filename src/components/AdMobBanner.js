@@ -60,9 +60,7 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
     paddingHorizontal: 8,
-    // Let AdMob handle its own sizing
   },
 });
 

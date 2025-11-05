@@ -423,8 +423,8 @@ const styles = StyleSheet.create({
   
   // Banner Footer (non-interactive container to avoid accidental clicks)
   footerAdContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    // paddingVertical: 12,
+    // paddingHorizontal: 8,
     borderTopWidth: 1,
   },
 });
