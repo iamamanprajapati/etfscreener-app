@@ -8,6 +8,7 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import Text from '../components/CustomText';
 import TextInput from '../components/CustomTextInput';
@@ -15,7 +16,8 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { cacheUtils } from '../utils/cache';
 import { SUMMARY_API_URL, PRICES_API_URL, parseNumber, formatters, renderDownFromHigh } from '../utils/helpers';
-import { getDisplaySymbol } from '../utils/symbolUtils';
+import { getDisplaySymbol, getFullSymbol } from '../utils/symbolUtils';
+import { getETFCategory } from '../data/etfDescriptions';
 import { useTheme } from '../contexts/ThemeContext';
 import { useWatchlist } from '../contexts/WatchlistContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,7 +39,7 @@ const CompareScreen = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState([]);
-  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: 'changePercent', dir: 'desc' });
   const [loadingSymbols, setLoadingSymbols] = useState(new Set());
   
@@ -57,7 +59,7 @@ const CompareScreen = () => {
     { key: 'yearlyReturn', label: '1Y %', render: formatters.percent, sortable: true },
     { key: 'twoYearReturn', label: '2Y %', render: formatters.percent, sortable: true },
     { key: 'downFrom2YearHigh', label: 'Down from 2Y High', render: renderDownFromHigh, sortable: true },
-    { key: 'recordDate', label: 'Record Date', sortable: false },
+    { key: 'sector', label: 'Sector', sortable: false },
   ];
 
   // Process raw data function - moved before useEffect to avoid hoisting issues
@@ -72,7 +74,7 @@ const CompareScreen = () => {
 
       return {
         symbol,
-        recordDate: details.recordDate ?? '',
+        sector: getETFCategory(getFullSymbol(symbol)),
         lastClosePrice: parseNumber(details.lastClosePrice),
         currentPrice: parseNumber(currentPrice),
         changePercent: parseNumber(changePercent),
@@ -97,6 +99,10 @@ const CompareScreen = () => {
         const newSelection = [...new Set([...prev, ...symbolsArray])].slice(0, MAX_SELECTION);
         return JSON.stringify(newSelection) !== JSON.stringify(prev) ? newSelection : prev;
       });
+      // If symbols are provided, open the modal to show selection
+      if (symbolsArray.length > 0) {
+        setIsModalVisible(true);
+      }
     }
   }, [symbols]);
 
@@ -205,10 +211,27 @@ const CompareScreen = () => {
       if (prev.length >= MAX_SELECTION) return prev;
       return [...prev, symbol];
     });
-    setSearch('');
   }, []);
 
   const onClear = useCallback(() => setSelected([]), []);
+  
+  const handleCompare = useCallback(() => {
+    setIsModalVisible(true);
+  }, []);
+  
+  const handleModalClose = useCallback(() => {
+    setIsModalVisible(false);
+    setSearch('');
+  }, []);
+  
+  const handleDone = useCallback(() => {
+    if (selected.length > 0) {
+      setIsModalVisible(false);
+      setSearch('');
+    } else {
+      Alert.alert('No ETFs Selected', 'Please select at least one ETF to compare.');
+    }
+  }, [selected]);
 
   const handleSort = useCallback((key) => {
     setSortConfig((prev) =>
@@ -339,39 +362,48 @@ const CompareScreen = () => {
     );
   };
 
-  const renderMetricRow = ({ item: metric }) => {
-    const allValues = selectedData.map(({ row }) => row?.[metric.key]).filter(v => v != null);
+  const renderETFRow = ({ item: { symbol, row } }) => {
+    if (!row) return null;
     
     return (
-      <View style={[styles.metricRow, { borderBottomColor: colors.tableBorderLight }]}>
-        <View style={styles.metricLabelContainer}>
-          <Text style={[styles.metricLabel, { color: colors.text }]}>{metric.label}</Text>
+      <View style={[styles.etfDataRow, { borderBottomColor: colors.tableBorderLight }]}>
+        <View style={styles.etfSymbolContainer}>
+          <Text style={[styles.etfSymbolText, { color: colors.primary, fontWeight: '600' }]}>
+            {getDisplaySymbol(symbol)}
+          </Text>
         </View>
         
-        {selectedData.map(({ symbol, row }) => {
-          const value = row?.[metric.key];
+        {METRICS.map((metric) => {
+          const value = row[metric.key];
+          const allValues = selectedData.map(({ row: r }) => r?.[metric.key]).filter(v => v != null);
           const performance = getPerformanceIndicator(metric.key, value, allValues);
           
+          // Special handling for downFrom2YearHigh - it always displays as negative
+          const isDownFromHigh = metric.key === 'downFrom2YearHigh';
+          
+          // Determine if value is negative or positive
+          // For downFrom2YearHigh, always treat as negative since it's always displayed with negative sign
+          const isNegative = value != null && (isDownFromHigh || value < 0);
+          const isPositive = value != null && !isDownFromHigh && value > 0;
+          const isPercentageMetric = metric.key === 'changePercent' || metric.key === 'weeklyReturn' || 
+                                     metric.key === 'monthlyReturn' || metric.key === 'yearlyReturn' || 
+                                     metric.key === 'twoYearReturn' || metric.key === 'downFrom2YearHigh';
+          
+          // Determine text color - red for negative, green for positive, default otherwise
+          let textColor = colors.text;
+          if (isNegative) {
+            textColor = '#dc2626'; // Red for negative values
+          } else if (isPositive && isPercentageMetric) {
+            textColor = colors.positive || '#10b981'; // Green for positive percentage values
+          }
+          
           return (
-            <View key={`${metric.key}-${symbol}`} style={styles.metricValueContainer}>
+            <View key={`${symbol}-${metric.key}`} style={styles.metricValueContainer}>
               <Text style={[
                 styles.metricValue, 
-                { color: colors.text },
+                { color: textColor },
                 // Make all percentage values bold for maximum visibility
-                (metric.key === 'changePercent' || metric.key === 'weeklyReturn' || 
-                 metric.key === 'monthlyReturn' || metric.key === 'yearlyReturn' || 
-                 metric.key === 'twoYearReturn' || metric.key === 'downFrom2YearHigh') && { fontWeight: '700' },
-                // Add colors for positive and negative percentage values
-                metric.key === 'changePercent' && row?.changePercent > 0 && { color: colors.positive },
-                metric.key === 'changePercent' && row?.changePercent < 0 && { color: colors.negative },
-                metric.key === 'weeklyReturn' && row?.weeklyReturn > 0 && { color: colors.positive },
-                metric.key === 'weeklyReturn' && row?.weeklyReturn < 0 && { color: colors.negative },
-                metric.key === 'monthlyReturn' && row?.monthlyReturn > 0 && { color: colors.positive },
-                metric.key === 'monthlyReturn' && row?.monthlyReturn < 0 && { color: colors.negative },
-                metric.key === 'yearlyReturn' && row?.yearlyReturn > 0 && { color: colors.positive },
-                metric.key === 'yearlyReturn' && row?.yearlyReturn < 0 && { color: colors.negative },
-                metric.key === 'twoYearReturn' && row?.twoYearReturn > 0 && { color: colors.positive },
-                metric.key === 'twoYearReturn' && row?.twoYearReturn < 0 && { color: colors.negative }
+                isPercentageMetric && { fontWeight: '700' }
               ]}>
                 {row ? (metric.render ? metric.render(row[metric.key], row) : (row[metric.key] ?? '—')) : '—'}
               </Text>
@@ -433,67 +465,75 @@ const CompareScreen = () => {
       <Header title="Compare ETFs" />
       
       <View style={styles.content}>
-        {/* Selection panel */}
-        <View style={[styles.selectPanel, isPanelCollapsed && styles.collapsedPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <TouchableOpacity
-            style={[styles.panelHeader, { borderBottomColor: colors.border }]}
-            onPress={() => setIsPanelCollapsed(!isPanelCollapsed)}
-          >
-            <Text style={[styles.panelTitle, { color: colors.text }]}>
-              {selected.length > 0 
-                ? `${selected.length} ETFs selected`
-                : "Select ETFs to compare"
-              }
+        {/* Compare button and selected ETFs info */}
+        {selected.length === 0 ? (
+          <View style={styles.initialStateContainer}>
+            <Ionicons name="bar-chart-outline" size={64} color={colors.textSecondary} />
+            <Text style={[styles.initialStateTitle, { color: colors.text }]}>Compare ETFs</Text>
+            <Text style={[styles.initialStateSubtitle, { color: colors.textSecondary }]}>
+              Select up to {MAX_SELECTION} ETFs to compare their metrics side by side
             </Text>
-            <Ionicons 
-              name={isPanelCollapsed ? 'chevron-down' : 'chevron-up'} 
-              size={20} 
-              color={colors.textSecondary} 
-            />
-          </TouchableOpacity>
-          
-          {!isPanelCollapsed && (
-            <View style={styles.panelContent}>
-              {renderHeader()}
-              
-              <FlatList
-                data={list}
-                renderItem={renderETFItem}
-                keyExtractor={(item) => item.symbol}
-                style={styles.etfList}
-                showsVerticalScrollIndicator={false}
-              />
+            <TouchableOpacity
+              style={[styles.compareButton, { backgroundColor: colors.primary }]}
+              onPress={handleCompare}
+            >
+              <Ionicons name="stats-chart" size={20} color="#fff" />
+              <Text style={styles.compareButtonText}>Compare ETFs</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={[styles.selectedHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+            <View style={styles.selectedInfo}>
+              <Text style={[styles.selectedCount, { color: colors.text }]}>
+                Comparing {selected.length} ETF{selected.length > 1 ? 's' : ''}
+              </Text>
+              <TouchableOpacity
+                style={[styles.editButton, { backgroundColor: colors.surfaceSecondary }]}
+                onPress={handleCompare}
+              >
+                <Ionicons name="create-outline" size={16} color={colors.primary} />
+                <Text style={[styles.editButtonText, { color: colors.primary }]}>Edit</Text>
+              </TouchableOpacity>
             </View>
-          )}
-        </View>
+            <TouchableOpacity
+              style={[styles.clearSelectedButton, { backgroundColor: colors.surfaceSecondary }]}
+              onPress={onClear}
+            >
+              <Ionicons name="close-circle-outline" size={16} color={colors.textSecondary} />
+              <Text style={[styles.clearSelectedText, { color: colors.textSecondary }]}>Clear All</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Comparison table */}
-        <View style={[styles.compareTableSection, { backgroundColor: colors.surface }]}>
-          {selected.length > 0 ? (
+        {selected.length > 0 && (
+          <View style={[styles.compareTableSection, { backgroundColor: colors.surface }]}>
             <ScrollView 
               ref={scrollViewRef}
               horizontal
               showsHorizontalScrollIndicator={true}
               style={styles.horizontalScroll}
             >
-              <View style={[styles.compareTable, { backgroundColor: colors.surface, minWidth: Math.max(400, selected.length * 120 + 200) }]}>
-                {/* Header row */}
+              <View style={[styles.compareTable, { backgroundColor: colors.surface, minWidth: Math.max(600, METRICS.length * 120 + 150) }]}>
+                {/* Header row with "Metric" and all metric labels as columns */}
                 <View style={[styles.tableHeader, { backgroundColor: colors.tableHeader, borderBottomColor: colors.tableBorder }]}>
-                  <Text style={[styles.headerMetric, { color: colors.text }]}>Metric</Text>
-                  {selectedData.map(({ symbol }) => (
-                    <View key={symbol} style={styles.headerSymbolContainer}>
-                      <Text style={[styles.headerSymbol, { color: colors.primary }]}>
-                        {getDisplaySymbol(symbol)}
+                  <View style={styles.headerMetricContainer}>
+                    <Text style={[styles.headerMetric, { color: colors.text, fontWeight: '700' }]}>Metric</Text>
+                  </View>
+                  {METRICS.map((metric) => (
+                    <View key={metric.key} style={styles.headerMetricColumnContainer}>
+                      <Text style={[styles.headerMetricColumn, { color: colors.text, fontWeight: '600' }]}>
+                        {metric.label}
                       </Text>
                     </View>
                   ))}
                 </View>
                 
-                {/* Metric rows */}
+                {/* ETF rows - each ETF as a row with its values */}
                 <FlatList
-                  data={METRICS}
-                  renderItem={renderMetricRow}
-                  keyExtractor={(item) => item.key}
+                  data={selectedData}
+                  renderItem={renderETFRow}
+                  keyExtractor={(item) => item.symbol}
                   showsVerticalScrollIndicator={false}
                   refreshControl={
                     <RefreshControl
@@ -505,17 +545,78 @@ const CompareScreen = () => {
                 />
               </View>
             </ScrollView>
-          ) : (
-            <View style={styles.hintContainer}>
-              <Ionicons name="bar-chart-outline" size={48} color={colors.textSecondary} />
-              <Text style={[styles.hintText, { color: colors.textSecondary }]}>Select up to {MAX_SELECTION} ETFs to compare</Text>
-              <Text style={[styles.hintSubtext, { color: colors.textSecondary }]}>
-                Use the search above to find and select ETFs for detailed comparison
-              </Text>
-            </View>
-          )}
-        </View>
+          </View>
+        )}
       </View>
+
+      {/* Modal for ETF selection */}
+      <Modal
+        visible={isModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleModalClose}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={handleModalClose}
+        >
+          <View 
+            style={[styles.modalContent, { backgroundColor: colors.surface }]}
+            onStartShouldSetResponder={() => true}
+          >
+            {/* Modal Header */}
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                Select ETFs to Compare
+              </Text>
+              <View style={styles.modalHeaderActions}>
+                <Text style={[styles.modalSelectionCount, { color: colors.textSecondary }]}>
+                  {selected.length}/{MAX_SELECTION}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.modalCloseButton, { backgroundColor: colors.surfaceSecondary }]}
+                  onPress={handleModalClose}
+                >
+                  <Ionicons name="close" size={20} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Search and selection info */}
+            <View style={styles.modalBody}>
+              {renderHeader()}
+              
+              <FlatList
+                data={list}
+                renderItem={renderETFItem}
+                keyExtractor={(item) => item.symbol}
+                style={styles.modalETFList}
+                showsVerticalScrollIndicator={true}
+              />
+            </View>
+
+            {/* Modal Footer */}
+            <View style={[styles.modalFooter, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
+              <TouchableOpacity
+                style={[
+                  styles.modalDoneButton,
+                  { backgroundColor: selected.length > 0 ? colors.primary : colors.border }
+                ]}
+                onPress={handleDone}
+                disabled={selected.length === 0}
+              >
+                <Text style={[
+                  styles.modalDoneButtonText,
+                  { color: selected.length > 0 ? '#fff' : colors.textSecondary }
+                ]}>
+                  Compare {selected.length > 0 ? `(${selected.length})` : ''}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
       
       {errorMessage && (
         <View style={styles.errorContainer}>
@@ -661,24 +762,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     minHeight: 50,
   },
-  headerMetric: {
+  headerMetricContainer: {
     width: 150,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    alignSelf: 'center',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    paddingRight: 8,
   },
-  headerSymbolContainer: {
+  headerMetric: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+  },
+  headerMetricColumnContainer: {
     width: 120,
     alignItems: 'center',
     paddingHorizontal: 8,
+    justifyContent: 'center',
   },
-  headerSymbol: {
-    fontSize: 14,
+  headerMetricColumn: {
+    fontSize: 13,
     fontWeight: '600',
     color: '#374151',
     textAlign: 'center',
-    marginBottom: 4,
   },
   headerActions: {
     flexDirection: 'row',
@@ -690,7 +795,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  metricRow: {
+  etfDataRow: {
     flexDirection: 'row',
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -698,17 +803,17 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f3f4f6',
     minHeight: 50,
   },
-  metricLabelContainer: {
+  etfSymbolContainer: {
     width: 150,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     paddingRight: 8,
   },
-  metricLabel: {
+  etfSymbolText: {
     fontSize: 14,
-    color: '#6b7280',
-    flex: 1,
+    fontWeight: '600',
+    color: '#2563eb',
   },
   sortIndicator: {
     padding: 2,
@@ -769,6 +874,141 @@ const styles = StyleSheet.create({
     color: '#dc2626',
     fontSize: 14,
     textAlign: 'center',
+  },
+  initialStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  initialStateTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginTop: 24,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  initialStateSubtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 22,
+  },
+  compareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    gap: 8,
+  },
+  compareButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  selectedHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  selectedInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  selectedCount: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    gap: 4,
+  },
+  editButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  clearSelectedButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    gap: 4,
+  },
+  clearSelectedText: {
+    fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '90%',
+    minHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    flex: 1,
+  },
+  modalHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  modalSelectionCount: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBody: {
+    flex: 1,
+    padding: 16,
+  },
+  modalETFList: {
+    flex: 1,
+  },
+  modalFooter: {
+    padding: 16,
+    borderTopWidth: 1,
+  },
+  modalDoneButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalDoneButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
