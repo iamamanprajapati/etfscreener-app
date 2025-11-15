@@ -6,6 +6,7 @@ export const API_BASE = __DEV__
 
 export const SUMMARY_API_URL = `${API_BASE}/api/summary`;
 export const PRICES_API_URL = `${API_BASE}/api/prices`;
+export const GLOBAL_MARKETS_API_URL = `${API_BASE}/api/markets/global`;
 
 // Number parsing helper (handles strings with commas, blanks)
 export const parseNumber = (value) => {

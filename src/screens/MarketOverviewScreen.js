@@ -4,10 +4,11 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  ScrollView,
 } from 'react-native';
 import Text from '../components/CustomText';
 import { useNavigation } from '@react-navigation/native';
-import { PRICES_API_URL, SUMMARY_API_URL, parseNumber } from '../utils/helpers';
+import { PRICES_API_URL, SUMMARY_API_URL, GLOBAL_MARKETS_API_URL, parseNumber } from '../utils/helpers';
 import { useTheme } from '../contexts/ThemeContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -17,8 +18,11 @@ const MarketOverviewScreen = () => {
   const navigation = useNavigation();
   const { colors } = useTheme();
   const [sectorData, setSectorData] = useState([]);
+  const [allGlobalMarkets, setAllGlobalMarkets] = useState([]); // Store all global markets for filtering
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('1D');
+  const [selectedTab, setSelectedTab] = useState('indian'); // 'indian' or 'global'
+  const [selectedRegion, setSelectedRegion] = useState('all'); // 'all', 'asia-pac', 'europe', 'north-am', 'south-am'
 
   // Define major sectors and their representative ETFs
   const SECTORS = [
@@ -71,9 +75,88 @@ const MarketOverviewScreen = () => {
     { key: '1Y', label: '1 Year', field: 'yearlyReturn' }
   ];
 
+  // Region filter configurations for global markets
+  const REGIONS = [
+    { key: 'all', label: 'All' },
+    { key: 'asia-pac', label: 'Asia-Pac' },
+    { key: 'europe', label: 'Europe' },
+    { key: 'north-am', label: 'North Am' },
+    { key: 'south-am', label: 'South Am' }
+  ];
+
   useEffect(() => {
-    fetchSectorData();
-  }, []);
+    if (selectedTab === 'indian') {
+      fetchSectorData();
+    } else {
+      // Reset region to 'all' when switching to global tab
+      setSelectedRegion('all');
+      fetchGlobalMarketData();
+    }
+  }, [selectedTab]);
+
+  // Filter global markets by region
+  useEffect(() => {
+    if (selectedTab === 'global' && allGlobalMarkets.length > 0) {
+      if (selectedRegion === 'all') {
+        setSectorData(allGlobalMarkets);
+      } else {
+        const filtered = allGlobalMarkets.filter(market => {
+          return market.region === selectedRegion;
+        });
+        setSectorData(filtered);
+      }
+    }
+  }, [selectedRegion, allGlobalMarkets, selectedTab]);
+
+  // Helper function to determine market region
+  const getMarketRegion = (marketName) => {
+    const nameLower = marketName.toLowerCase();
+    
+    // Asia-Pacific
+    if (nameLower.includes('nikkei') || nameLower.includes('japan') ||
+        nameLower.includes('hang seng') || nameLower.includes('hong kong') ||
+        nameLower.includes('shanghai') || nameLower.includes('shenzhen') || nameLower.includes('china') ||
+        nameLower.includes('asx') || nameLower.includes('australia') ||
+        nameLower.includes('kospi') || nameLower.includes('south korea') ||
+        nameLower.includes('taiwan') || nameLower.includes('singapore') ||
+        nameLower.includes('india') || nameLower.includes('nifty') || nameLower.includes('sensex') ||
+        nameLower.includes('indonesia') || nameLower.includes('thailand') ||
+        nameLower.includes('philippines') || nameLower.includes('malaysia')) {
+      return 'asia-pac';
+    }
+    
+    // Europe
+    if (nameLower.includes('ftse') || nameLower.includes('uk') || nameLower.includes('britain') ||
+        nameLower.includes('dax') || nameLower.includes('germany') ||
+        nameLower.includes('cac') || nameLower.includes('france') ||
+        nameLower.includes('ibex') || nameLower.includes('spain') ||
+        nameLower.includes('ftse mib') || nameLower.includes('italy') ||
+        nameLower.includes('aex') || nameLower.includes('netherlands') ||
+        nameLower.includes('swiss') || nameLower.includes('sweden') ||
+        nameLower.includes('norway') || nameLower.includes('denmark') ||
+        nameLower.includes('euro') || nameLower.includes('stoxx')) {
+      return 'europe';
+    }
+    
+    // North America
+    if (nameLower.includes('s&p') || nameLower.includes('sp500') ||
+        nameLower.includes('nasdaq') || nameLower.includes('dow') ||
+        nameLower.includes('usa') || nameLower.includes('united states') ||
+        nameLower.includes('tsx') || nameLower.includes('canada') ||
+        nameLower.includes('mexico')) {
+      return 'north-am';
+    }
+    
+    // South America
+    if (nameLower.includes('brazil') || nameLower.includes('bovespa') ||
+        nameLower.includes('argentina') || nameLower.includes('chile') ||
+        nameLower.includes('colombia') || nameLower.includes('peru')) {
+      return 'south-am';
+    }
+    
+    // Default to all if can't determine
+    return 'all';
+  };
 
   const fetchSectorData = async () => {
     try {
@@ -152,6 +235,125 @@ const MarketOverviewScreen = () => {
     }
   };
 
+  const fetchGlobalMarketData = async () => {
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch(GLOBAL_MARKETS_API_URL, {
+        headers: {
+          'accept': '*/*',
+          'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch global market data');
+      }
+
+      const globalData = await response.json();
+      
+      // Process global market data - adapt based on API response structure
+      // Assuming the API returns an array of market indices/ETFs
+      let processedMarkets = [];
+      
+      if (Array.isArray(globalData)) {
+        // If it's an array, process each item
+        processedMarkets = globalData.map((item, index) => {
+          // Extract relevant fields - adjust based on actual API response
+          const name = item.name || item.symbol || item.index || `Market ${index + 1}`;
+          const changePercent = parseNumber(item.changePercent || item.change || item.change_pct || item.percentChange);
+          const weeklyReturn = parseNumber(item.weeklyReturn || item.weekChange || item.week_change);
+          const monthlyReturn = parseNumber(item.monthlyReturn || item.monthChange || item.month_change);
+          const yearlyReturn = parseNumber(item.yearlyReturn || item.yearChange || item.year_change);
+          
+          // Get icon based on name or symbol
+          const icon = getGlobalMarketIcon(name);
+          const region = getMarketRegion(name);
+          
+          return {
+            name: name,
+            icon: icon,
+            region: region,
+            color: '#6366f1',
+            etfData: [],
+            performance: {
+              changePercent: changePercent,
+              weeklyReturn: weeklyReturn,
+              monthlyReturn: monthlyReturn,
+              yearlyReturn: yearlyReturn,
+              avgVolume: null,
+              avgRSI: null
+            }
+          };
+        });
+      } else if (globalData && typeof globalData === 'object') {
+        // If it's an object, try to extract markets from common keys
+        const marketsArray = globalData.markets || globalData.data || globalData.indices || [globalData];
+        processedMarkets = marketsArray.map((item, index) => {
+          const name = item.name || item.symbol || item.index || item.country || `Market ${index + 1}`;
+          const changePercent = parseNumber(item.changePercent || item.change || item.change_pct || item.percentChange);
+          const weeklyReturn = parseNumber(item.weeklyReturn || item.weekChange || item.week_change);
+          const monthlyReturn = parseNumber(item.monthlyReturn || item.monthChange || item.month_change);
+          const yearlyReturn = parseNumber(item.yearlyReturn || item.yearChange || item.year_change);
+          
+          const icon = getGlobalMarketIcon(name);
+          const region = getMarketRegion(name);
+          
+          return {
+            name: name,
+            icon: icon,
+            region: region,
+            color: '#6366f1',
+            etfData: [],
+            performance: {
+              changePercent: changePercent,
+              weeklyReturn: weeklyReturn,
+              monthlyReturn: monthlyReturn,
+              yearlyReturn: yearlyReturn,
+              avgVolume: null,
+              avgRSI: null
+            }
+          };
+        });
+      }
+
+      // Store all markets and apply region filter
+      setAllGlobalMarkets(processedMarkets.length > 0 ? processedMarkets : []);
+      if (selectedRegion === 'all') {
+        setSectorData(processedMarkets.length > 0 ? processedMarkets : []);
+      } else {
+        const filtered = processedMarkets.filter(market => {
+          return market.region === selectedRegion;
+        });
+        setSectorData(filtered);
+      }
+    } catch (error) {
+      console.error('Error fetching global market data:', error);
+      setSectorData([]);
+      setAllGlobalMarkets([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getGlobalMarketIcon = (name) => {
+    const nameLower = name.toLowerCase();
+    if (nameLower.includes('s&p') || nameLower.includes('sp500')) return '🇺🇸';
+    if (nameLower.includes('nasdaq')) return '📱';
+    if (nameLower.includes('dow')) return '📈';
+    if (nameLower.includes('ftse')) return '🇬🇧';
+    if (nameLower.includes('dax')) return '🇩🇪';
+    if (nameLower.includes('cac')) return '🇫🇷';
+    if (nameLower.includes('nikkei')) return '🇯🇵';
+    if (nameLower.includes('hang seng') || nameLower.includes('hong kong')) return '🇭🇰';
+    if (nameLower.includes('shanghai') || nameLower.includes('shenzhen')) return '🇨🇳';
+    if (nameLower.includes('asx') || nameLower.includes('australia')) return '🇦🇺';
+    if (nameLower.includes('tsx') || nameLower.includes('canada')) return '🇨🇦';
+    if (nameLower.includes('brazil') || nameLower.includes('bovespa')) return '🇧🇷';
+    if (nameLower.includes('india') || nameLower.includes('nifty') || nameLower.includes('sensex')) return '🇮🇳';
+    return '🌍';
+  };
+
   const calculateAverage = (data, field) => {
     const validValues = data.map(item => item[field]).filter(val => val != null);
     if (validValues.length === 0) return null;
@@ -173,6 +375,11 @@ const MarketOverviewScreen = () => {
   };
 
   const getPerformanceValue = (sector, period) => {
+    // For global markets, always use changePercent (1D)
+    if (selectedTab === 'global') {
+      return sector.performance?.changePercent;
+    }
+    // For Indian markets, use the selected period
     const field = PERIODS.find(p => p.key === period)?.field;
     return sector.performance?.[field];
   };
@@ -184,18 +391,96 @@ const MarketOverviewScreen = () => {
   };
 
   const handleSectorPress = (sector) => {
-    // Navigate to the first ETF in the sector
-    if (sector.etfData && sector.etfData.length > 0) {
+    // Navigate to the first ETF in the sector (only for Indian market)
+    if (selectedTab === 'indian' && sector.etfData && sector.etfData.length > 0) {
       navigation.navigate('ETFDetail', { symbol: sector.etfData[0].symbol });
     }
+    // For global markets, we might not have ETF symbols, so do nothing or show info
   };
 
   // Sort sectors by current selection for better at-a-glance overview
-  const sortedSectors = [...sectorData].sort((a, b) => {
-    const av = getPerformanceValue(a, selectedPeriod);
-    const bv = getPerformanceValue(b, selectedPeriod);
-    return (bv ?? -9999) - (av ?? -9999);
-  });
+  const sortedSectors = [...sectorData]
+    .filter(sector => getPerformanceValue(sector, selectedPeriod) != null)
+    .sort((a, b) => {
+      const av = getPerformanceValue(a, selectedPeriod);
+      const bv = getPerformanceValue(b, selectedPeriod);
+      return (bv ?? -9999) - (av ?? -9999);
+    });
+
+  const handleRefresh = () => {
+    if (selectedTab === 'global') {
+      fetchGlobalMarketData();
+    } else {
+      fetchSectorData();
+    }
+  };
+
+  const renderTabSelector = () => (
+    <View style={[styles.tabSelector, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+      <TouchableOpacity
+        style={[
+          styles.tab,
+          { backgroundColor: colors.surfaceSecondary },
+          selectedTab === 'indian' && { backgroundColor: colors.primary }
+        ]}
+        onPress={() => setSelectedTab('indian')}
+      >
+        <Text style={[
+          styles.tabText,
+          { color: colors.text },
+          selectedTab === 'indian' && { color: colors.surface, fontWeight: '600' }
+        ]}>
+          🇮🇳 Indian Market
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.tab,
+          { backgroundColor: colors.surfaceSecondary },
+          selectedTab === 'global' && { backgroundColor: colors.primary }
+        ]}
+        onPress={() => setSelectedTab('global')}
+      >
+        <Text style={[
+          styles.tabText,
+          { color: colors.text },
+          selectedTab === 'global' && { color: colors.surface, fontWeight: '600' }
+        ]}>
+          🌍 Global Market
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderRegionFilter = () => (
+    <View style={[styles.regionFilter, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.regionFilterContent}
+      >
+        {REGIONS.map(region => (
+          <TouchableOpacity
+            key={region.key}
+            style={[
+              styles.regionChip, 
+              { backgroundColor: colors.surfaceSecondary },
+              selectedRegion === region.key && { backgroundColor: colors.primary }
+            ]}
+            onPress={() => setSelectedRegion(region.key)}
+          >
+            <Text style={[
+              styles.regionChipText, 
+              { color: colors.text },
+              selectedRegion === region.key && { color: colors.surface, fontWeight: '600' }
+            ]}>
+              {region.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
 
   const renderPeriodSelector = () => (
     <View style={[styles.periodSelector, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
@@ -222,9 +507,11 @@ const MarketOverviewScreen = () => {
   );
 
   const renderSectorTile = ({ item: sector }) => {
-    const value = getPerformanceValue(sector, selectedPeriod) ?? 0;
+    const value = getPerformanceValue(sector, selectedPeriod);
+    if (value == null) return null;
+    
     const isPositive = value >= 0;
-    const intensity = Math.min(100, Math.abs(value) * 20);
+    const displayValue = value.toFixed(1);
 
     return (
       <TouchableOpacity
@@ -235,14 +522,17 @@ const MarketOverviewScreen = () => {
           !isPositive && { borderColor: colors.negative }
         ]}
         onPress={() => handleSectorPress(sector)}
+        disabled={selectedTab === 'global' && (!sector.etfData || sector.etfData.length === 0)}
       >
         <Text style={styles.tileIcon}>{sector.icon}</Text>
-        <Text style={[styles.tileName, { color: colors.text }]}>{sector.name}</Text>
+        <Text style={[styles.tileName, { color: colors.text }]} numberOfLines={2}>
+          {sector.name}
+        </Text>
         <Text style={[
           styles.tileValue, 
           { color: isPositive ? colors.positive : colors.negative }
         ]}>
-          {value.toFixed(1)}%
+          {displayValue}%
         </Text>
       </TouchableOpacity>
     );
@@ -283,9 +573,10 @@ const MarketOverviewScreen = () => {
   }
 
   const renderHeader = () => (
-    <>
-      {renderPeriodSelector()}
-    </>
+    <View style={{ marginBottom: 10 }}>
+      {renderTabSelector()}
+      {selectedTab === 'global' ? renderRegionFilter() : renderPeriodSelector()}
+    </View>
   );
 
   const renderFooter = () => (
@@ -325,24 +616,83 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  tabSelector: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 12,
+    borderBottomWidth: 1,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+  regionFilter: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+  },
+  regionFilterContent: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+    paddingRight: 4,
+  },
+  regionChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#f3f4f6',
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  regionChipText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+  refreshButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#f3f4f6',
+    marginLeft: 'auto',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 36,
+    height: 28,
+  },
+  refreshIcon: {
+    fontSize: 16,
+  },
   periodSelector: {
     flexDirection: 'row',
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 6,
   },
   periodChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
     backgroundColor: '#f3f4f6',
   },
   activePeriodChip: {
     backgroundColor: '#2563eb',
   },
   periodChipText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
     color: '#6b7280',
   },
