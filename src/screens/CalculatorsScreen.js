@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f3f4f6',
   },
   activeTab: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#5b9bfd',
   },
   tabText: {
     fontSize: 14,
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563eb',
+    backgroundColor: '#5b9bfd',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
@@ -644,13 +644,13 @@ const styles = StyleSheet.create({
   largeValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: '#5b9bfd',
   },
   returns: {
     color: '#059669',
   },
   total: {
-    color: '#2563eb',
+    color: '#5b9bfd',
     fontWeight: 'bold',
   },
   profit: {

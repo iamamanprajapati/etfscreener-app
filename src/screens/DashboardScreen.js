@@ -365,7 +365,7 @@ const DashboardScreen = () => {
                       style={styles.symbolButton}
                       onPress={() => handleRowPress(item.symbol)}
                     >
-                      <Text style={[styles.symbolText, { color: colors.primary }]}>{getDisplaySymbol(item.symbol)}</Text>
+                      <Text style={[styles.symbolText, { color: colors.symbol }]}>{getDisplaySymbol(item.symbol)}</Text>
                     </TouchableOpacity>
                   </View>
                 ))

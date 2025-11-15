@@ -27,7 +27,7 @@ const MarketOverviewScreen = () => {
     { name: 'Silver', etfs: ['SILVER1.NS'], icon: '🥈', color: '#9ca3af' },
     
     // Banking & Finance
-    { name: 'Banking', etfs: ['BANKBEES.NS'], icon: '🏦', color: '#2563eb' },
+    { name: 'Banking', etfs: ['BANKBEES.NS'], icon: '🏦', color: '#5b9bfd' },
     { name: 'Private Banks', etfs: ['PVTBANIETF.NS'], icon: '🏛️', color: '#4f46e5' },
     { name: 'PSU Banks', etfs: ['PSUBNKBEES.NS'], icon: '🏢', color: '#0891b2' },
     { name: 'Financial Services', etfs: ['BFSI.NS'], icon: '💰', color: '#f59e0b' },
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f3f4f6',
   },
   activePeriodChip: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#5b9bfd',
   },
   periodChipText: {
     fontSize: 12,

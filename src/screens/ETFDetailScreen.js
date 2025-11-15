@@ -196,6 +196,7 @@ const ETFDetailScreen = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Header
         title={getDisplaySymbol(symbol)}
+        titleColor={colors.symbol}
         showBackButton={true}
         onBackPress={handleBackPress}
         showThemeToggle={false}

@@ -455,7 +455,7 @@ const WatchlistScreen = () => {
                   >
                     <View style={styles.suggestionContent}>
                       <View style={styles.suggestionHeader}>
-                        <Text style={[styles.suggestionSymbol, { color: colors.text }]}>
+                        <Text style={[styles.suggestionSymbol, { color: colors.symbol }]}>
                           {getDisplaySymbol(item.symbol)}
                         </Text>
                         <Text style={[styles.suggestionPrice, { color: colors.text }]}>
@@ -622,7 +622,7 @@ const WatchlistScreen = () => {
                           style={styles.symbolButton}
                           onPress={() => handleRowPress(item.symbol)}
                         >
-                          <Text style={[styles.symbolText, { color: colors.primary }]}>{getDisplaySymbol(item.symbol)}</Text>
+                          <Text style={[styles.symbolText, { color: colors.symbol }]}>{getDisplaySymbol(item.symbol)}</Text>
                         </TouchableOpacity>
                       </View>
                     ))
@@ -773,7 +773,7 @@ const styles = StyleSheet.create({
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563eb',
+    backgroundColor: '#5b9bfd',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
@@ -808,7 +808,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   addFirstButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#5b9bfd',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

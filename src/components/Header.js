@@ -73,7 +73,8 @@ const Header = ({
   changePercent,
   showThemeToggle = false,
   rightButton = null,
-  showTicker = true
+  showTicker = true,
+  titleColor = null
 }) => {
   const { colors } = useTheme();
   
@@ -332,7 +333,7 @@ const Header = ({
         )}
         
         <View style={styles.titleContainer}>
-          <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+          <Text style={[styles.title, { color: titleColor || colors.text }]}>{title}</Text>
           {showPrice && (
             <View style={styles.priceContainer}>
               <Text style={[styles.price, { color: colors.text }]}>{formatPrice(currentPrice)}</Text>

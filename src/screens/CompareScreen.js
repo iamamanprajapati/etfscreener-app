@@ -315,8 +315,8 @@ const CompareScreen = () => {
     return (
       <View style={[
         styles.etfItem, 
-        { backgroundColor: colors.surface, borderColor: colors.border },
-        isSelected && { backgroundColor: colors.tableRowSelected }
+        { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
+        isSelected && { backgroundColor: 'rgba(91, 155, 253, 0.2)' }
       ]}>
         <TouchableOpacity
           style={styles.etfItemContent}
@@ -330,8 +330,7 @@ const CompareScreen = () => {
           />
           <Text style={[
             styles.etfSymbol, 
-            { color: colors.text },
-            isDisabled && { color: colors.textSecondary }
+            { color: isDisabled ? 'rgba(255, 255, 255, 0.6)' : '#ffffff' },
           ]}>
             {getDisplaySymbol(item.symbol)}
           </Text>
@@ -377,7 +376,7 @@ const CompareScreen = () => {
         }
       ]}>
         <View style={[styles.etfSymbolContainer, { borderRightColor: colors.tableBorder, borderRightWidth: 1 }]}>
-          <Text style={[styles.etfSymbolText, { color: colors.primary, fontWeight: '600' }]}>
+          <Text style={[styles.etfSymbolText, { color: colors.symbol, fontWeight: '600' }]}>
             {getDisplaySymbol(symbol)}
           </Text>
         </View>
@@ -738,7 +737,7 @@ const styles = StyleSheet.create({
   clearButtonText: {
     marginLeft: 4,
     fontSize: 14,
-    color: '#2563eb',
+    color: '#5b9bfd',
   },
   disabledText: {
     color: '#9ca3af',
@@ -863,7 +862,7 @@ const styles = StyleSheet.create({
   etfSymbolText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#2563eb',
+    color: '#5b9bfd',
     letterSpacing: 0.3,
   },
   sortIndicator: {

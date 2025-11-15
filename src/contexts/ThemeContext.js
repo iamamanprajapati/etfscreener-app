@@ -21,30 +21,31 @@ export const ThemeProvider = ({ children }) => {
 
   // Helper function to get colors for a specific theme
   const getColorsForTheme = (darkMode) => ({
-    background: darkMode ? '#1f2937' : '#f9fafb',
-    surface: darkMode ? '#374151' : '#ffffff',
-    surfaceSecondary: darkMode ? '#4b5563' : '#f3f4f6',
-    text: darkMode ? '#f9fafb' : '#1f2937',
-    textSecondary: darkMode ? '#d1d5db' : '#6b7280',
-    border: darkMode ? '#4b5563' : '#e5e7eb',
-    borderLight: darkMode ? '#6b7280' : '#f3f4f6',
-    primary: darkMode ? 'rgb(6,182,212)' : '#2563eb',
-    primaryHeader: darkMode ? 'rgb(6,182,212,.5)' : '#2563eb',
-    primaryLight: darkMode ? '#0e7490' : '#dbeafe',
-    success: '#059669',
-    error: '#dc2626',
-    warning: '#d97706',
-    info: '#0891b2',
-    tableHeader: darkMode ? '#374151' : '#f8fafc',
-    tableRow: darkMode ? '#374151' : '#ffffff',
-    tableRowSelected: darkMode ? '#0e7490' : '#eff6ff',
-    tableBorder: darkMode ? '#4b5563' : '#e5e7eb',
-    tableBorderLight: darkMode ? '#6b7280' : '#f3f4f6',
-    positive: darkMode ? '#10b981' : '#059669', // Brighter green for dark theme
-    negative: '#dc2626',
-    rsiOverbought: '#dc2626',
-    rsiOversold: darkMode ? '#10b981' : '#059669', // Brighter green for dark theme
-    rsiNeutral: darkMode ? '#9ca3af' : '#6b7280',
+    background: darkMode ? '#0f172a' : '#f9fafb', // Rich slate-900 background
+    surface: darkMode ? '#1e293b' : '#ffffff', // Slate-800 surface with subtle blue tint
+    surfaceSecondary: darkMode ? '#334155' : '#f3f4f6', // Slate-700 for secondary surfaces
+    text: darkMode ? '#f1f5f9' : '#1f2937', // Slate-100 for better contrast
+    textSecondary: darkMode ? '#cbd5e1' : '#6b7280', // Slate-300 for secondary text
+    border: darkMode ? '#475569' : '#e5e7eb', // Slate-600 for borders
+    borderLight: darkMode ? '#64748b' : '#f3f4f6', // Slate-500 for light borders
+    primary: darkMode ? '#5b9bfd' : '#5b9bfd', // Custom blue #5b9bfd
+    primaryHeader: darkMode ? 'rgba(91,155,253,0.5)' : '#5b9bfd', // #5b9bfd with opacity
+    primaryLight: darkMode ? '#3d7ae8' : '#dbeafe', // Darker shade of #5b9bfd for light primary
+    symbol: '#5b9bfd', // Custom blue for ETF symbols
+    success: '#10b981', // Emerald-500
+    error: '#ef4444', // Red-500
+    warning: '#f59e0b', // Amber-500
+    info: '#06b6d4', // Cyan-500
+    tableHeader: darkMode ? '#1e293b' : '#f8fafc', // Slate-800
+    tableRow: darkMode ? '#1e293b' : '#ffffff', // Slate-800
+    tableRowSelected: darkMode ? '#3d7ae8' : '#eff6ff', // Darker shade of #5b9bfd for selected rows
+    tableBorder: darkMode ? '#475569' : '#e5e7eb', // Slate-600
+    tableBorderLight: darkMode ? '#64748b' : '#f3f4f6', // Slate-500
+    positive: darkMode ? '#22c55e' : '#059669', // Green-500 for dark theme
+    negative: '#ef4444', // Red-500
+    rsiOverbought: '#ef4444', // Red-500
+    rsiOversold: darkMode ? '#22c55e' : '#059669', // Green-500 for dark theme
+    rsiNeutral: darkMode ? '#94a3b8' : '#6b7280', // Slate-400
   });
 
   const theme = {

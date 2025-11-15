@@ -149,7 +149,15 @@ const MetricsCards = ({ metrics, etfInfo, priceRange }) => {
                 transform: [{ translateX: -8 }] // Center the handle properly
               }
             ]}>
-              <Text style={[styles.rangeSliderValue, { color: '#ffffff' }]}>{current.toFixed(2)}</Text>
+              <View style={[
+                styles.rangeSliderValue,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                }
+              ]}>
+                <Text style={{ color: colors.text }}>{current.toFixed(2)}</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -390,13 +398,10 @@ const styles = StyleSheet.create({
     left: -10,
     width: 36,
     textAlign: 'center',
-    backgroundColor: '#1f2937',
-    color: '#ffffff',
     borderRadius: 4,
     paddingVertical: 3,
     paddingHorizontal: 3,
     borderWidth: 1,
-    borderColor: '#374151',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
