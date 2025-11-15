@@ -513,11 +513,6 @@ const WatchlistScreen = () => {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Header title="Watchlist" />
         
-        {/* Top Banner Ad */}
-        <View style={[styles.topBannerAdContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-          <AdMobBanner />
-        </View>
-        
         <GoogleSignInComponent
           onSignIn={handleGoogleSignIn}
           user={user}
@@ -544,11 +539,6 @@ const WatchlistScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Header title="Watchlist" />
-      
-      {/* Top Banner Ad */}
-      <View style={[styles.topBannerAdContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <AdMobBanner />
-      </View>
       
       <View style={styles.content}>
         {/* Watchlist Actions */}
