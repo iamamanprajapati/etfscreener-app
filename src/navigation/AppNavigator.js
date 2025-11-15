@@ -10,7 +10,7 @@ import DashboardScreen from '../screens/DashboardScreen';
 import ETFDetailScreen from '../screens/ETFDetailScreen';
 import CompareScreen from '../screens/CompareScreen';
 import WatchlistScreen from '../screens/WatchlistScreen';
-import CalculatorsScreen from '../screens/CalculatorsScreen';
+import GlobalMarketScreen from '../screens/GlobalMarketScreen';
 import MarketOverviewScreen from '../screens/MarketOverviewScreen';
 
 const Tab = createBottomTabNavigator();
@@ -24,10 +24,10 @@ function MainTabNavigator() {
   const getTabLabel = (routeName) => {
     const labels = {
       'Dashboard': 'Dashboard',
-      'Market': 'Market',
+      'Market': 'Indian',
       'Compare': 'Compare',
       'Watchlist': 'Watchlist',
-      'Calculator': 'Calculator',
+      'GlobalMarket': 'Global',
     };
     return labels[routeName] || routeName;
   };
@@ -46,8 +46,8 @@ function MainTabNavigator() {
             iconName = focused ? 'bar-chart' : 'bar-chart-outline';
           } else if (route.name === 'Watchlist') {
             iconName = focused ? 'star' : 'star-outline';
-          } else if (route.name === 'Calculator') {
-            iconName = focused ? 'calculator' : 'calculator-outline';
+          } else if (route.name === 'GlobalMarket') {
+            iconName = focused ? 'globe' : 'globe-outline';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -56,11 +56,13 @@ function MainTabNavigator() {
           return (
             <Text
               style={{
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: focused ? '600' : '400',
                 color: color,
                 marginTop: 2,
+                textAlign: 'center',
               }}
+              numberOfLines={2}
             >
               {getTabLabel(route.name)}
             </Text>
@@ -77,9 +79,9 @@ function MainTabNavigator() {
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Market" component={MarketOverviewScreen} />
+      <Tab.Screen name="GlobalMarket" component={GlobalMarketScreen} />
       <Tab.Screen name="Compare" component={CompareScreen} />
       <Tab.Screen name="Watchlist" component={WatchlistScreen} />
-      <Tab.Screen name="Calculator" component={CalculatorsScreen} />
     </Tab.Navigator>
   );
 }
