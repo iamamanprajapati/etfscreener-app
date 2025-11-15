@@ -23,6 +23,7 @@ import { useWatchlist } from '../contexts/WatchlistContext';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AdMobBanner from '../components/AdMobBanner';
 
 const CompareScreen = () => {
   const route = useRoute();
@@ -362,21 +363,30 @@ const CompareScreen = () => {
     );
   };
 
-  const renderETFRow = ({ item: { symbol, row } }) => {
+  const renderETFRow = ({ item: { symbol, row }, index }) => {
     if (!row) return null;
     
+    const isEvenRow = index % 2 === 0;
+    
     return (
-      <View style={[styles.etfDataRow, { borderBottomColor: colors.tableBorderLight }]}>
-        <View style={styles.etfSymbolContainer}>
+      <View style={[
+        styles.etfDataRow, 
+        { 
+          borderBottomColor: colors.tableBorderLight,
+          backgroundColor: isEvenRow ? colors.surface : colors.surfaceSecondary
+        }
+      ]}>
+        <View style={[styles.etfSymbolContainer, { borderRightColor: colors.tableBorder, borderRightWidth: 1 }]}>
           <Text style={[styles.etfSymbolText, { color: colors.primary, fontWeight: '600' }]}>
             {getDisplaySymbol(symbol)}
           </Text>
         </View>
         
-        {METRICS.map((metric) => {
+        {METRICS.map((metric, metricIndex) => {
           const value = row[metric.key];
           const allValues = selectedData.map(({ row: r }) => r?.[metric.key]).filter(v => v != null);
           const performance = getPerformanceIndicator(metric.key, value, allValues);
+          const isLastColumn = metricIndex === METRICS.length - 1;
           
           // Special handling for downFrom2YearHigh - it always displays as negative
           const isDownFromHigh = metric.key === 'downFrom2YearHigh';
@@ -398,7 +408,13 @@ const CompareScreen = () => {
           }
           
           return (
-            <View key={`${symbol}-${metric.key}`} style={styles.metricValueContainer}>
+            <View 
+              key={`${symbol}-${metric.key}`} 
+              style={[
+                styles.metricValueContainer,
+                { borderRightColor: colors.tableBorder, borderRightWidth: isLastColumn ? 0 : 1 }
+              ]}
+            >
               <Text style={[
                 styles.metricValue, 
                 { color: textColor },
@@ -517,16 +533,25 @@ const CompareScreen = () => {
               <View style={[styles.compareTable, { backgroundColor: colors.surface, minWidth: Math.max(600, METRICS.length * 120 + 150) }]}>
                 {/* Header row with "Metric" and all metric labels as columns */}
                 <View style={[styles.tableHeader, { backgroundColor: colors.tableHeader, borderBottomColor: colors.tableBorder }]}>
-                  <View style={styles.headerMetricContainer}>
+                  <View style={[styles.headerMetricContainer, { borderRightColor: colors.tableBorder, borderRightWidth: 1 }]}>
                     <Text style={[styles.headerMetric, { color: colors.text, fontWeight: '700' }]}>Metric</Text>
                   </View>
-                  {METRICS.map((metric) => (
-                    <View key={metric.key} style={styles.headerMetricColumnContainer}>
-                      <Text style={[styles.headerMetricColumn, { color: colors.text, fontWeight: '600' }]}>
-                        {metric.label}
-                      </Text>
-                    </View>
-                  ))}
+                  {METRICS.map((metric, index) => {
+                    const isLastColumn = index === METRICS.length - 1;
+                    return (
+                      <View 
+                        key={metric.key} 
+                        style={[
+                          styles.headerMetricColumnContainer,
+                          { borderRightColor: colors.tableBorder, borderRightWidth: isLastColumn ? 0 : 1 }
+                        ]}
+                      >
+                        <Text style={[styles.headerMetricColumn, { color: colors.text, fontWeight: '600' }]}>
+                          {metric.label}
+                        </Text>
+                      </View>
+                    );
+                  })}
                 </View>
                 
                 {/* ETF rows - each ETF as a row with its values */}
@@ -542,11 +567,23 @@ const CompareScreen = () => {
                       tintColor={colors.primary}
                     />
                   }
+                  ListEmptyComponent={
+                    <View style={styles.emptyTableContainer}>
+                      <Text style={[styles.emptyTableText, { color: colors.textSecondary }]}>
+                        No ETFs selected for comparison
+                      </Text>
+                    </View>
+                  }
                 />
               </View>
             </ScrollView>
           </View>
         )}
+      </View>
+
+      {/* Ad Banner at bottom */}
+      <View style={[styles.footerAdContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+        <AdMobBanner />
       </View>
 
       {/* Modal for ETF selection */}
@@ -754,36 +791,48 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     minWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f8fafc',
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 16,
-    minHeight: 50,
+    minHeight: 60,
+    borderBottomWidth: 2,
+    borderBottomColor: '#e5e7eb',
   },
   headerMetricContainer: {
     width: 150,
     alignItems: 'flex-start',
     justifyContent: 'center',
-    paddingRight: 8,
+    paddingRight: 12,
   },
   headerMetric: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: '#374151',
+    letterSpacing: 0.3,
   },
   headerMetricColumnContainer: {
     width: 120,
     alignItems: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     justifyContent: 'center',
   },
+  headerMetricColumnContainerLast: {
+    borderRightWidth: 0,
+  },
   headerMetricColumn: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#374151',
     textAlign: 'center',
+    letterSpacing: 0.2,
   },
   headerActions: {
     flexDirection: 'row',
@@ -797,23 +846,25 @@ const styles = StyleSheet.create({
   },
   etfDataRow: {
     flexDirection: 'row',
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
-    minHeight: 50,
+    minHeight: 60,
+    alignItems: 'center',
   },
   etfSymbolContainer: {
     width: 150,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingRight: 8,
+    paddingRight: 12,
   },
   etfSymbolText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: '#2563eb',
+    letterSpacing: 0.3,
   },
   sortIndicator: {
     padding: 2,
@@ -821,7 +872,11 @@ const styles = StyleSheet.create({
   metricValueContainer: {
     width: 120,
     alignItems: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+  },
+  metricValueContainerLast: {
+    borderRightWidth: 0,
   },
   metricValueWrapper: {
     flexDirection: 'row',
@@ -834,6 +889,16 @@ const styles = StyleSheet.create({
   metricValue: {
     fontSize: 14,
     color: '#1f2937',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  emptyTableContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTableText: {
+    fontSize: 16,
     textAlign: 'center',
   },
   performanceIcon: {
@@ -1009,6 +1074,13 @@ const styles = StyleSheet.create({
   modalDoneButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  footerAdContainer: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderTopWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
