@@ -493,7 +493,7 @@ const CompareScreen = () => {
               style={[styles.compareButton, { backgroundColor: colors.primary }]}
               onPress={handleCompare}
             >
-              <Ionicons name="stats-chart" size={20} color="#fff" />
+              <Ionicons name="stats-chart" size={16} color="#fff" />
               <Text style={styles.compareButtonText}>Compare ETFs</Text>
             </TouchableOpacity>
           </View>
@@ -963,14 +963,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    gap: 6,
   },
   compareButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '600',
   },
   selectedHeader: {
@@ -1076,9 +1076,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   footerAdContainer: {
-    paddingVertical: 12,
+    // paddingVertical: 12,
     paddingHorizontal: 8,
-    borderTopWidth: 1,
+    // borderTopWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

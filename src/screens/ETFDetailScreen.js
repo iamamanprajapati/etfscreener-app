@@ -338,11 +338,8 @@ const ETFDetailScreen = () => {
               onPress={handleComparePress}
             >
               <View style={styles.buttonContent}>
-                <Ionicons name="bar-chart-outline" size={24} color={colors.primary} />
-                <View style={styles.buttonTextContainer}>
-                  <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>Compare ETFs</Text>
-                  <Text style={[styles.secondaryButtonSubtext, { color: colors.textSecondary }]}>Compare with other ETFs</Text>
-                </View>
+                <Ionicons name="bar-chart-outline" size={18} color={colors.primary} />
+                <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>Compare ETFs</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -558,9 +555,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   secondaryButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -571,7 +568,8 @@ const styles = StyleSheet.create({
   buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 8,
+    justifyContent: 'center',
   },
   buttonTextContainer: {
     flex: 1,
@@ -586,9 +584,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 2,
+    fontSize: 14,
+    fontWeight: '600',
   },
   secondaryButtonSubtext: {
     fontSize: 12,

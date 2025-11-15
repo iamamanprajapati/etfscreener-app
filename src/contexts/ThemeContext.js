@@ -1,10 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useRef } from 'react';
 import { Animated } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ThemeContext = createContext();
-
-const THEME_STORAGE_KEY = 'app_theme';
 
 export const useTheme = () => {
   const context = useContext(ThemeContext);
@@ -15,70 +12,12 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [nextTheme, setNextTheme] = useState(null);
+  // Always use dark theme
+  const isDarkMode = true;
+  const isTransitioning = false;
+  const nextTheme = null;
   const fadeOutAnim = useRef(new Animated.Value(1)).current;
   const fadeInAnim = useRef(new Animated.Value(0)).current;
-
-  // Load theme preference on app start
-  useEffect(() => {
-    loadThemePreference();
-  }, []);
-
-  const loadThemePreference = async () => {
-    try {
-      const savedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-      if (savedTheme !== null) {
-        setIsDarkMode(savedTheme === 'dark');
-      }
-    } catch (error) {
-      console.warn('Error loading theme preference:', error);
-    }
-  };
-
-  const toggleTheme = async () => {
-    try {
-      setIsTransitioning(true);
-      const newTheme = !isDarkMode;
-      setNextTheme(newTheme);
-      
-      // Reset animations
-      fadeOutAnim.setValue(1);
-      fadeInAnim.setValue(0);
-      
-      // Telegram-style cross-fade animation
-      Animated.parallel([
-        // Fade out current theme
-        Animated.timing(fadeOutAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        // Fade in new theme
-        Animated.timing(fadeInAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        })
-      ]).start(() => {
-        // Complete the transition
-        setIsDarkMode(newTheme);
-        setNextTheme(null);
-        setIsTransitioning(false);
-        fadeOutAnim.setValue(1);
-        fadeInAnim.setValue(0);
-      });
-      
-      await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme ? 'dark' : 'light');
-    } catch (error) {
-      console.warn('Error saving theme preference:', error);
-      setIsTransitioning(false);
-      setNextTheme(null);
-      fadeOutAnim.setValue(1);
-      fadeInAnim.setValue(0);
-    }
-  };
 
   // Helper function to get colors for a specific theme
   const getColorsForTheme = (darkMode) => ({
@@ -110,13 +49,13 @@ export const ThemeProvider = ({ children }) => {
 
   const theme = {
     isDarkMode,
-    toggleTheme,
+    toggleTheme: () => {}, // No-op function for compatibility
     isTransitioning,
     nextTheme,
     fadeOutAnim,
     fadeInAnim,
     colors: getColorsForTheme(isDarkMode),
-    nextColors: nextTheme !== null ? getColorsForTheme(nextTheme) : null,
+    nextColors: null,
   };
 
   return (

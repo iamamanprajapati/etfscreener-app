@@ -62,8 +62,8 @@ function AppContent() {
             opacity: fadeOutAnim 
           }}
         >
+          <StatusBar style={isDarkMode ? "light" : "dark"} />
           <NavigationContainer>
-            <StatusBar style={isDarkMode ? "light" : "dark"} />
             <AppNavigator />
           </NavigationContainer>
         </Animated.View>
@@ -79,8 +79,8 @@ function AppContent() {
             opacity: fadeInAnim 
           }}
         >
+          <StatusBar style={nextTheme ? "light" : "dark"} />
           <NavigationContainer>
-            <StatusBar style={nextTheme ? "light" : "dark"} />
             <AppNavigator />
           </NavigationContainer>
         </Animated.View>
@@ -89,9 +89,11 @@ function AppContent() {
   }
   
   return (
-    <NavigationContainer>
+    <View style={{ flex: 1 }}>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
-      <AppNavigator />
+      <NavigationContainer>
+        <AppNavigator />
+      </NavigationContainer>
 
       <Modal transparent visible={forceUpdate.visible} animationType="fade">
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' }}>
@@ -111,7 +113,7 @@ function AppContent() {
           </View>
         </View>
       </Modal>
-    </NavigationContainer>
+    </View>
   );
 }
 

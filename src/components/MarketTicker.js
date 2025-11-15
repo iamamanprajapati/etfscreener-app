@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, Dimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
+import { View, StyleSheet, Animated, Dimensions } from 'react-native';
 import Text from './CustomText';
+import { useTheme } from '../contexts/ThemeContext';
 import { API_BASE, PRICES_API_URL } from '../utils/helpers';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -56,63 +55,36 @@ const getHolidayMessage = () => {
   const dayOfWeek = today.getDay();
   
   if (dayOfWeek === 0) {
-    return '🇮🇳 INDIAN MARKETS CLOSED - SUNDAY';
+    return 'Indian Stock Market Closed - Sunday';
   } else if (dayOfWeek === 6) {
-    return '🇮🇳 INDIAN MARKETS CLOSED - SATURDAY';
+    return 'Indian Stock Market Closed - Saturday';
   } else {
-    return '🇮🇳 INDIAN MARKETS CLOSED - MARKET HOLIDAY';
+    return 'Indian Stock Market Closed - Market Holiday';
   }
 };
 
-const Header = ({ 
-  title = "ETF Dashboard", 
-  showBackButton = false,
-  onBackPress,
-  showPrice = false,
-  currentPrice,
-  changePercent,
-  showThemeToggle = false,
-  rightButton = null,
-  showTicker = true
-}) => {
+const MarketTicker = () => {
   const { colors } = useTheme();
-  
-  // Market ticker state
   const [marketData, setMarketData] = useState([]);
   const [isHoliday, setIsHoliday] = useState(false);
-  const [isTickerLoading, setIsTickerLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const scrollX = useRef(new Animated.Value(0)).current;
   const animationRef = useRef(null);
 
-  const formatPrice = (price) => {
-    if (price == null) return '—';
-    return `₹${Number(price).toFixed(2)}`;
-  };
-
-  const formatChange = (change) => {
-    if (change == null) return '—';
-    const sign = change > 0 ? '+' : '';
-    return `${sign}${Number(change).toFixed(2)}%`;
-  };
-
-  // Market ticker functions
   useEffect(() => {
-    if (!showTicker) return;
-    
     const holiday = isMarketHoliday();
     setIsHoliday(holiday);
-    setIsTickerLoading(true); // Start with loading state
     
     if (!holiday) {
       fetchMarketData();
     } else {
-      setIsTickerLoading(false);
+      setIsLoading(false);
     }
-  }, [showTicker]);
+  }, []);
 
   const fetchMarketData = async () => {
     try {
-      setIsTickerLoading(true);
+      setIsLoading(true);
       
       // First, try to fetch from dedicated indices endpoint
       try {
@@ -123,11 +95,15 @@ const Header = ({
         if (response.ok) {
           const data = await response.json();
           
+          // Expected format: [{ name: 'Nifty 50', value: 24500, change: 0.5 }, ...]
+          // Or: { nifty50: { value: 24500, change: 0.5 }, sensex: { value: 80000, change: -0.3 }, ... }
+          
           let indices = [];
           
           if (Array.isArray(data)) {
             indices = data;
           } else if (typeof data === 'object') {
+            // Convert object format to array
             if (data.nifty50 || data.nifty) {
               indices.push({
                 name: 'Nifty 50',
@@ -153,7 +129,7 @@ const Header = ({
           
           if (indices.length > 0) {
             setMarketData(indices);
-            setIsTickerLoading(false);
+            setIsLoading(false);
             return;
           }
         }
@@ -189,22 +165,23 @@ const Header = ({
         
         if (indices.length > 0) {
           setMarketData(indices);
-          setIsTickerLoading(false);
+          setIsLoading(false);
           return;
         }
       }
       
+      // If all else fails, show empty state (will show holiday message if applicable)
       setMarketData([]);
     } catch (error) {
       console.warn('Failed to fetch market data:', error);
       setMarketData([]);
     } finally {
-      setIsTickerLoading(false);
+      setIsLoading(false);
     }
   };
 
   // Format number with commas
-  const formatTickerNumber = (num) => {
+  const formatNumber = (num) => {
     if (num == null || num === 0) return '—';
     return new Intl.NumberFormat('en-IN', {
       maximumFractionDigits: 0
@@ -212,65 +189,55 @@ const Header = ({
   };
 
   // Format percentage change
-  const formatTickerChange = (change) => {
+  const formatChange = (change) => {
     if (change == null) return '—';
     const sign = change > 0 ? '+' : '';
     return `${sign}${Number(change).toFixed(2)}%`;
   };
 
-  // Create ticker text - always returns something
+  // Create ticker text
   const getTickerText = () => {
     if (isHoliday) {
       return getHolidayMessage();
     }
     
-    if (isTickerLoading) {
-      return '🇮🇳 LOADING MARKET DATA...';
+    if (isLoading) {
+      return 'Loading market data...';
     }
     
     if (marketData.length === 0) {
-      return '🇮🇳 INDIAN MARKETS - DATA UNAVAILABLE';
+      return 'Market data unavailable';
     }
     
-    const tickerContent = marketData
+    return marketData
       .map(item => {
-        const value = formatTickerNumber(item.value);
-        const change = formatTickerChange(item.change);
+        const value = formatNumber(item.value);
+        const change = formatChange(item.change);
         const changeColor = item.change >= 0 ? '🟢' : '🔴';
-        return `🇮🇳 ${item.name.toUpperCase()}: ${value} (${change}) ${changeColor}`;
+        return `${item.name}: ${value} (${change}) ${changeColor}`;
       })
       .join('  •  ');
-    
-    // Ensure we always return something
-    return tickerContent || '🇮🇳 INDIAN MARKETS';
   };
 
-  // Start scrolling animation - seamless infinite scroll
+  // Start scrolling animation
   useEffect(() => {
-    if (!showTicker) return;
+    if (isLoading) return;
     
     const tickerText = getTickerText();
-    if (!tickerText) return;
-    
     // Estimate text width (approximately 7 pixels per character for font size 13)
     const textWidth = tickerText.length * 7;
-    const separatorWidth = 3; // Width of "  •  "
-    const singleItemWidth = textWidth + separatorWidth;
-    
-    // Calculate how many repetitions we need to cover screen + buffer
-    const repetitionsNeeded = Math.ceil((SCREEN_WIDTH * 2) / singleItemWidth) + 2;
+    const totalWidth = textWidth + SCREEN_WIDTH;
     
     // Stop any existing animation
     scrollX.stopAnimation();
     scrollX.setValue(0);
     
-    // Start seamless infinite scroll animation
-    // Scroll by one text width, then reset instantly (but text repeats so it looks seamless)
+    // Start infinite scroll animation
     const anim = Animated.loop(
       Animated.sequence([
         Animated.timing(scrollX, {
-          toValue: -singleItemWidth,
-          duration: Math.max(15000, singleItemWidth * 10),
+          toValue: -textWidth,
+          duration: Math.max(15000, textWidth * 10), // Adjust speed based on text length
           useNativeDriver: true,
         }),
         Animated.timing(scrollX, {
@@ -288,65 +255,31 @@ const Header = ({
       anim.stop();
       scrollX.stopAnimation();
     };
-  }, [marketData, isHoliday, isTickerLoading, showTicker]);
+  }, [marketData, isHoliday, isLoading]);
 
-  // Always get ticker text - ensure it never returns empty
-  const tickerText = showTicker ? getTickerText() : '🇮🇳 INDIAN MARKETS';
+  if (isLoading) {
+    return null; // Don't show anything while loading
+  }
+
+  const tickerText = getTickerText();
+  const textWidth = tickerText.length * 7;
+  const totalWidth = textWidth * 2 + SCREEN_WIDTH * 2; // Duplicate text for seamless loop
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-      {/* Market Ticker - Full width above title - Always visible */}
-      {showTicker && (
-        <View style={[styles.tickerWrapper, { backgroundColor: colors.background }]}>
-          <Animated.View
-            style={[
-              styles.tickerContent,
-              {
-                transform: [{ translateX: scrollX }],
-                width: SCREEN_WIDTH * 4, // Wide enough to hold all repeated text
-              },
-            ]}
-          >
-            <Text style={styles.tickerText} numberOfLines={1}>
-              {(() => {
-                // Repeat text enough times to ensure seamless scrolling - no gaps
-                const textWidth = tickerText.length * 7;
-                const separatorWidth = 3;
-                const itemWidth = textWidth + separatorWidth;
-                const repetitions = Math.ceil((SCREEN_WIDTH * 4) / itemWidth) + 10;
-                return Array(repetitions).fill(tickerText).join('  •  ');
-              })()}
-            </Text>
-          </Animated.View>
-        </View>
-      )}
-      
-      <View style={styles.content}>
-        {showBackButton && (
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={onBackPress}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.primary} />
-          </TouchableOpacity>
-        )}
-        
-        <View style={styles.titleContainer}>
-          <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-          {showPrice && (
-            <View style={styles.priceContainer}>
-              <Text style={[styles.price, { color: colors.text }]}>{formatPrice(currentPrice)}</Text>
-              <Text style={[
-                styles.change,
-                changePercent > 0 ? { color: colors.positive } : { color: colors.negative }
-              ]}>
-                {formatChange(changePercent)}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {rightButton}
+      <View style={styles.tickerWrapper}>
+        <Animated.View
+          style={[
+            styles.tickerContent,
+            {
+              transform: [{ translateX: scrollX }],
+            },
+          ]}
+        >
+          <Text style={[styles.tickerText, { color: colors.text }]} numberOfLines={1}>
+            {tickerText}  •  {tickerText}  •  {tickerText}
+          </Text>
+        </Animated.View>
       </View>
     </View>
   );
@@ -355,64 +288,24 @@ const Header = ({
 const styles = StyleSheet.create({
   container: {
     borderBottomWidth: 1,
-    paddingTop: 30,
-    paddingBottom: 8,
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 32,
-    paddingHorizontal: 16,
-  },
-  backButton: {
-    marginRight: 8,
-    padding: 4,
-  },
-  titleContainer: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  price: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginRight: 8,
-  },
-  change: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  themeToggle: {
-    padding: 6,
-    borderRadius: 20,
-    marginLeft: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 0,
+    zIndex: 1000,
   },
   tickerWrapper: {
-    height: 20,
+    height: 24,
     overflow: 'hidden',
-    marginBottom: 8,
-    justifyContent: 'center',
-    width: '100%',
   },
   tickerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 28,
-    paddingHorizontal: 8,
+    height: 24,
   },
   tickerText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#f59e0b', // Golden/orange color
-    letterSpacing: 0.5,
+    fontWeight: '500',
   },
 });
 
-export default Header;
+export default MarketTicker;
+
