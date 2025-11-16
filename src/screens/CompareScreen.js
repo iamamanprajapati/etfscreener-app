@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import {
   View,
   StyleSheet,
@@ -24,6 +24,79 @@ import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/LoadingSpinner';
 import AdMobBanner from '../components/AdMobBanner';
+
+// Memoized ETF Item Component for better performance
+const ETFItem = memo(({ 
+  item, 
+  isSelected, 
+  isDisabled, 
+  inWatchlist, 
+  isLoading, 
+  onToggle, 
+  onNavigate, 
+  onAddToWatchlist, 
+  colors 
+}) => {
+  return (
+    <View style={[
+      styles.etfItem, 
+      { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
+      isSelected && { backgroundColor: 'rgba(91, 155, 253, 0.2)' }
+    ]}>
+      <TouchableOpacity
+        style={styles.etfItemContent}
+        onPress={() => onToggle(item.symbol)}
+        disabled={isDisabled}
+      >
+        <Ionicons
+          name={isSelected ? 'checkbox' : 'square-outline'}
+          size={20}
+          color={isSelected ? colors.primary : isDisabled ? colors.border : colors.textSecondary}
+        />
+        <Text style={[
+          styles.etfSymbol, 
+          { color: isDisabled ? 'rgba(255, 255, 255, 0.6)' : '#ffffff' },
+        ]}>
+          {getDisplaySymbol(item.symbol)}
+        </Text>
+      </TouchableOpacity>
+      
+      <View style={styles.etfItemActions}>
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: colors.surfaceSecondary }]}
+          onPress={() => onNavigate(item.symbol)}
+        >
+          <Ionicons name="eye-outline" size={16} color={colors.primary} />
+        </TouchableOpacity>
+        
+        {!inWatchlist && (
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.surfaceSecondary }]}
+            onPress={() => onAddToWatchlist(item.symbol)}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Ionicons name="star-outline" size={16} color={colors.primary} />
+            )}
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison function for better performance
+  return (
+    prevProps.item.symbol === nextProps.item.symbol &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.isDisabled === nextProps.isDisabled &&
+    prevProps.inWatchlist === nextProps.inWatchlist &&
+    prevProps.isLoading === nextProps.isLoading
+  );
+});
+
+ETFItem.displayName = 'ETFItem';
 
 const CompareScreen = () => {
   const route = useRoute();
@@ -194,9 +267,12 @@ const CompareScreen = () => {
     const filtered = data
       .filter((r) => (q ? r.symbol.toLowerCase().includes(q) : true));
     
+    // Create a Set for fast lookup
+    const selectedSet = new Set(selected);
+    
     // Separate selected and unselected items
-    const selectedItems = filtered.filter(r => selected.includes(r.symbol));
-    const unselectedItems = filtered.filter(r => !selected.includes(r.symbol));
+    const selectedItems = filtered.filter(r => selectedSet.has(r.symbol));
+    const unselectedItems = filtered.filter(r => !selectedSet.has(r.symbol));
     
     // Sort each group alphabetically
     selectedItems.sort((a, b) => a.symbol.localeCompare(b.symbol));
@@ -306,61 +382,33 @@ const CompareScreen = () => {
     return null;
   }, []);
 
-  const renderETFItem = ({ item }) => {
-    const isSelected = selected.includes(item.symbol);
+  const handleNavigateToDetail = useCallback((symbol) => {
+    navigation.navigate('ETFDetail', { symbol });
+  }, [navigation]);
+
+  // Create a Set for O(1) lookup instead of O(n) with array.includes()
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
+
+  const renderETFItem = useCallback(({ item }) => {
+    const isSelected = selectedSet.has(item.symbol);
     const isDisabled = !isSelected && selected.length >= MAX_SELECTION;
-    const inWatchlist = isInWatchlist(item.symbol);
+    const inWatchlist = user ? isInWatchlist(item.symbol) : false;
     const isLoading = loadingSymbols.has(item.symbol);
     
     return (
-      <View style={[
-        styles.etfItem, 
-        { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
-        isSelected && { backgroundColor: 'rgba(91, 155, 253, 0.2)' }
-      ]}>
-        <TouchableOpacity
-          style={styles.etfItemContent}
-          onPress={() => onToggle(item.symbol)}
-          disabled={isDisabled}
-        >
-          <Ionicons
-            name={isSelected ? 'checkbox' : 'square-outline'}
-            size={20}
-            color={isSelected ? colors.primary : isDisabled ? colors.border : colors.textSecondary}
-          />
-          <Text style={[
-            styles.etfSymbol, 
-            { color: isDisabled ? 'rgba(255, 255, 255, 0.6)' : '#ffffff' },
-          ]}>
-            {getDisplaySymbol(item.symbol)}
-          </Text>
-        </TouchableOpacity>
-        
-        <View style={styles.etfItemActions}>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.surfaceSecondary }]}
-            onPress={() => navigation.navigate('ETFDetail', { symbol: item.symbol })}
-          >
-            <Ionicons name="eye-outline" size={16} color={colors.primary} />
-          </TouchableOpacity>
-          
-          {!inWatchlist && user && (
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: colors.surfaceSecondary }]}
-              onPress={() => handleAddToWatchlist(item.symbol)}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : (
-                <Ionicons name="star-outline" size={16} color={colors.primary} />
-              )}
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+      <ETFItem
+        item={item}
+        isSelected={isSelected}
+        isDisabled={isDisabled}
+        inWatchlist={inWatchlist}
+        isLoading={isLoading}
+        onToggle={onToggle}
+        onNavigate={handleNavigateToDetail}
+        onAddToWatchlist={user ? handleAddToWatchlist : null}
+        colors={colors}
+      />
     );
-  };
+  }, [selectedSet, selected.length, loadingSymbols, user, isInWatchlist, onToggle, handleNavigateToDetail, handleAddToWatchlist, colors]);
 
   const renderETFRow = ({ item: { symbol, row }, index }) => {
     if (!row) return null;
@@ -523,59 +571,145 @@ const CompareScreen = () => {
         {/* Comparison table */}
         {selected.length > 0 && (
           <View style={[styles.compareTableSection, { backgroundColor: colors.surface }]}>
-            <ScrollView 
-              ref={scrollViewRef}
-              horizontal
-              showsHorizontalScrollIndicator={true}
-              style={styles.horizontalScroll}
-            >
-              <View style={[styles.compareTable, { backgroundColor: colors.surface, minWidth: Math.max(600, METRICS.length * 120 + 150) }]}>
-                {/* Header row with "Metric" and all metric labels as columns */}
-                <View style={[styles.tableHeader, { backgroundColor: colors.tableHeader, borderBottomColor: colors.tableBorder }]}>
-                  <View style={[styles.headerMetricContainer, { borderRightColor: colors.tableBorder, borderRightWidth: 1 }]}>
-                    <Text style={[styles.headerMetric, { color: colors.text, fontWeight: '700' }]}>Metric</Text>
-                  </View>
-                  {METRICS.map((metric, index) => {
-                    const isLastColumn = index === METRICS.length - 1;
+            <View style={styles.tableContainer}>
+              {/* Fixed left column with ETF symbols */}
+              <View style={[styles.fixedColumn, { backgroundColor: colors.surface }]}>
+                {/* Fixed header */}
+                <View style={[styles.fixedColumnHeader, { backgroundColor: colors.tableHeader, borderBottomColor: colors.tableBorder }]}>
+                  <Text style={[styles.headerMetric, { color: colors.text, fontWeight: '700' }]}>ETF</Text>
+                </View>
+                
+                {/* Fixed ETF symbols */}
+                <FlatList
+                  data={selectedData}
+                  renderItem={({ item: { symbol }, index }) => {
+                    const isEvenRow = index % 2 === 0;
                     return (
-                      <View 
-                        key={metric.key} 
-                        style={[
-                          styles.headerMetricColumnContainer,
-                          { borderRightColor: colors.tableBorder, borderRightWidth: isLastColumn ? 0 : 1 }
-                        ]}
-                      >
-                        <Text style={[styles.headerMetricColumn, { color: colors.text, fontWeight: '600' }]}>
-                          {metric.label}
+                      <View style={[
+                        styles.fixedColumnCell,
+                        { 
+                          borderBottomColor: colors.tableBorderLight,
+                          backgroundColor: isEvenRow ? colors.surface : colors.surfaceSecondary
+                        }
+                      ]}>
+                        <Text style={[styles.etfSymbolText, { color: colors.symbol, fontWeight: '600' }]}>
+                          {getDisplaySymbol(symbol)}
                         </Text>
                       </View>
                     );
-                  })}
-                </View>
-                
-                {/* ETF rows - each ETF as a row with its values */}
-                <FlatList
-                  data={selectedData}
-                  renderItem={renderETFRow}
+                  }}
                   keyExtractor={(item) => item.symbol}
                   showsVerticalScrollIndicator={false}
-                  refreshControl={
-                    <RefreshControl
-                      refreshing={isRefreshing}
-                      onRefresh={() => fetchData(true)}
-                      tintColor={colors.primary}
-                    />
-                  }
-                  ListEmptyComponent={
-                    <View style={styles.emptyTableContainer}>
-                      <Text style={[styles.emptyTableText, { color: colors.textSecondary }]}>
-                        No ETFs selected for comparison
-                      </Text>
-                    </View>
-                  }
+                  scrollEnabled={false}
                 />
               </View>
-            </ScrollView>
+
+              {/* Scrollable metrics section */}
+              <ScrollView 
+                ref={scrollViewRef}
+                horizontal
+                showsHorizontalScrollIndicator={true}
+                style={styles.horizontalScroll}
+              >
+                <View style={[styles.scrollableTable, { backgroundColor: colors.surface }]}>
+                  {/* Header row with metric labels */}
+                  <View style={[styles.tableHeader, { backgroundColor: colors.tableHeader, borderBottomColor: colors.tableBorder }]}>
+                    {METRICS.map((metric, index) => {
+                      const isLastColumn = index === METRICS.length - 1;
+                      return (
+                        <View 
+                          key={metric.key} 
+                          style={[
+                            styles.headerMetricColumnContainer,
+                            { borderRightColor: colors.tableBorder, borderRightWidth: isLastColumn ? 0 : 1 }
+                          ]}
+                        >
+                          <Text style={[styles.headerMetricColumn, { color: colors.text, fontWeight: '600' }]}>
+                            {metric.label}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                  
+                  {/* ETF data rows */}
+                  <FlatList
+                    data={selectedData}
+                    renderItem={({ item: { symbol, row }, index }) => {
+                      if (!row) return null;
+                      
+                      const isEvenRow = index % 2 === 0;
+                      
+                      return (
+                        <View style={[
+                          styles.scrollableDataRow, 
+                          { 
+                            borderBottomColor: colors.tableBorderLight,
+                            backgroundColor: isEvenRow ? colors.surface : colors.surfaceSecondary
+                          }
+                        ]}>
+                          {METRICS.map((metric, metricIndex) => {
+                            const value = row[metric.key];
+                            const allValues = selectedData.map(({ row: r }) => r?.[metric.key]).filter(v => v != null);
+                            const performance = getPerformanceIndicator(metric.key, value, allValues);
+                            const isLastColumn = metricIndex === METRICS.length - 1;
+                            
+                            const isDownFromHigh = metric.key === 'downFrom2YearHigh';
+                            const isNegative = value != null && (isDownFromHigh || value < 0);
+                            const isPositive = value != null && !isDownFromHigh && value > 0;
+                            const isPercentageMetric = metric.key === 'changePercent' || metric.key === 'weeklyReturn' || 
+                                                       metric.key === 'monthlyReturn' || metric.key === 'yearlyReturn' || 
+                                                       metric.key === 'twoYearReturn' || metric.key === 'downFrom2YearHigh';
+                            
+                            let textColor = colors.text;
+                            if (isNegative) {
+                              textColor = '#dc2626';
+                            } else if (isPositive && isPercentageMetric) {
+                              textColor = colors.positive || '#10b981';
+                            }
+                            
+                            return (
+                              <View 
+                                key={`${symbol}-${metric.key}`} 
+                                style={[
+                                  styles.metricValueContainer,
+                                  { borderRightColor: colors.tableBorder, borderRightWidth: isLastColumn ? 0 : 1 }
+                                ]}
+                              >
+                                <Text style={[
+                                  styles.metricValue, 
+                                  { color: textColor },
+                                  isPercentageMetric && { fontWeight: '700' }
+                                ]}>
+                                  {row ? (metric.render ? metric.render(row[metric.key], row) : (row[metric.key] ?? '—')) : '—'}
+                                </Text>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      );
+                    }}
+                    keyExtractor={(item) => item.symbol}
+                    showsVerticalScrollIndicator={false}
+                    scrollEnabled={false}
+                    refreshControl={
+                      <RefreshControl
+                        refreshing={isRefreshing}
+                        onRefresh={() => fetchData(true)}
+                        tintColor={colors.primary}
+                      />
+                    }
+                    ListEmptyComponent={
+                      <View style={styles.emptyTableContainer}>
+                        <Text style={[styles.emptyTableText, { color: colors.textSecondary }]}>
+                          No ETFs selected for comparison
+                        </Text>
+                      </View>
+                    }
+                  />
+                </View>
+              </ScrollView>
+            </View>
           </View>
         )}
       </View>
@@ -629,6 +763,12 @@ const CompareScreen = () => {
                 keyExtractor={(item) => item.symbol}
                 style={styles.modalETFList}
                 showsVerticalScrollIndicator={true}
+                // Performance optimizations
+                maxToRenderPerBatch={15}
+                updateCellsBatchingPeriod={100}
+                initialNumToRender={20}
+                windowSize={5}
+                // Don't use removeClippedSubviews or getItemLayout - they can cause scrolling issues
               />
             </View>
 
@@ -780,10 +920,57 @@ const styles = StyleSheet.create({
   },
   compareTableSection: {
     flex: 1,
-    padding: 16,
+    padding: 12,
+  },
+  tableContainer: {
+    flexDirection: 'row',
+    flex: 1,
+    backgroundColor: '#000',
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  fixedColumn: {
+    zIndex: 10,
+    borderRightWidth: .5,
+    borderRightColor: '#e5e7eb',
+  },
+  fixedColumnHeader: {
+    width: 120,
+    height: 47, // Exact height: 10 (paddingVertical) * 2 + 25 (content) + 2 (borderBottom)
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#f8fafc',
+  },
+  fixedColumnCell: {
+    width: 120,
+    height: 46, // Exact height: 10 (paddingVertical) * 2 + 25 (content) + 1 (borderBottom)
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    justifyContent: 'center',
   },
   horizontalScroll: {
     flex: 1,
+  },
+  scrollableTable: {
+    backgroundColor: '#fff',
+  },
+  scrollableDataRow: {
+    flexDirection: 'row',
+    height: 46, // Exact height to match fixedColumnCell
+    paddingVertical: 10,
+    paddingHorizontal: 0,
+    borderBottomWidth: 1,
+    alignItems: 'center',
   },
   compareTable: {
     backgroundColor: '#fff',
@@ -799,35 +986,37 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f8fafc',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    minHeight: 60,
+    height: 47, // Exact height to match fixedColumnHeader
+    paddingVertical: 10,
+    paddingHorizontal: 0,
     borderBottomWidth: 2,
     borderBottomColor: '#e5e7eb',
+    alignItems: 'center',
   },
   headerMetricContainer: {
-    width: 150,
+    width: 100,
     alignItems: 'flex-start',
     justifyContent: 'center',
-    paddingRight: 12,
+    paddingRight: 8,
   },
   headerMetric: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
     color: '#374151',
     letterSpacing: 0.3,
   },
   headerMetricColumnContainer: {
-    width: 120,
+    width: 100,
+    height: 47, // Match header height
     alignItems: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     justifyContent: 'center',
   },
   headerMetricColumnContainerLast: {
     borderRightWidth: 0,
   },
   headerMetricColumn: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: '#374151',
     textAlign: 'center',
@@ -845,22 +1034,22 @@ const styles = StyleSheet.create({
   },
   etfDataRow: {
     flexDirection: 'row',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
-    minHeight: 60,
+    minHeight: 45,
     alignItems: 'center',
   },
   etfSymbolContainer: {
-    width: 150,
+    width: 100,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingRight: 12,
+    paddingRight: 8,
   },
   etfSymbolText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
     color: '#5b9bfd',
     letterSpacing: 0.3,
@@ -869,9 +1058,10 @@ const styles = StyleSheet.create({
     padding: 2,
   },
   metricValueContainer: {
-    width: 120,
+    width: 100,
+    height: 46, // Match row height
     alignItems: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     justifyContent: 'center',
   },
   metricValueContainerLast: {
@@ -881,15 +1071,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    minHeight: 24,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    minHeight: 20,
   },
   metricValue: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#1f2937',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   emptyTableContainer: {
     padding: 40,
