@@ -9,6 +9,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   Modal,
+  Switch,
+  Dimensions,
 } from 'react-native';
 import Text from '../components/CustomText';
 import TextInput from '../components/CustomTextInput';
@@ -24,6 +26,8 @@ import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/LoadingSpinner';
 import AdMobBanner from '../components/AdMobBanner';
+import { BarChart, LineChart, ProgressChart } from 'react-native-chart-kit';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Memoized ETF Item Component for better performance
 const ETFItem = memo(({ 
@@ -116,10 +120,12 @@ const CompareScreen = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: 'changePercent', dir: 'desc' });
   const [loadingSymbols, setLoadingSymbols] = useState(new Set());
+  const [viewMode, setViewMode] = useState('table'); // 'table' or 'graph'
   
   const scrollViewRef = useRef(null);
 
   const MAX_SELECTION = 6;
+  const screenWidth = Dimensions.get('window').width;
 
   const METRICS = [
     { key: 'lastClosePrice', label: 'Current Price', render: formatters.price, sortable: true },
@@ -386,6 +392,651 @@ const CompareScreen = () => {
     navigation.navigate('ETFDetail', { symbol });
   }, [navigation]);
 
+  // Prepare chart data for visualization
+  const chartData = useMemo(() => {
+    if (selectedData.length === 0) return null;
+
+    // Use abbreviated labels to prevent overlap
+    const labels = selectedData.map(({ symbol }) => {
+      const displaySymbol = getDisplaySymbol(symbol);
+      // Shorten long labels for better fit
+      if (displaySymbol.length > 10) {
+        return displaySymbol.substring(0, 9) + '..';
+      }
+      return displaySymbol;
+    });
+    const fullLabels = selectedData.map(({ symbol }) => getDisplaySymbol(symbol));
+    const colorsList = [
+      '#5b9bfd', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
+    ];
+
+    // Returns data (1W, 1M, 1Y, 2Y)
+    const returnsData = {
+      weekly: selectedData.map(({ row }) => row?.weeklyReturn ?? 0),
+      monthly: selectedData.map(({ row }) => row?.monthlyReturn ?? 0),
+      yearly: selectedData.map(({ row }) => row?.yearlyReturn ?? 0),
+      twoYear: selectedData.map(({ row }) => row?.twoYearReturn ?? 0),
+    };
+
+    // RSI data
+    const rsiData = {
+      daily: selectedData.map(({ row }) => row?.dailyRSI ?? 0),
+      weekly: selectedData.map(({ row }) => row?.weeklyRSI ?? 0),
+      monthly: selectedData.map(({ row }) => row?.monthlyRSI ?? 0),
+    };
+
+    // Price and change data
+    const priceData = selectedData.map(({ row }) => row?.lastClosePrice ?? 0);
+    const changeData = selectedData.map(({ row }) => row?.changePercent ?? 0);
+    const volumeData = selectedData.map(({ row }) => row?.lastDayVolume ?? 0);
+
+    return {
+      labels,
+      fullLabels,
+      colorsList,
+      returnsData,
+      rsiData,
+      priceData,
+      changeData,
+      volumeData,
+    };
+  }, [selectedData]);
+
+  // Chart configurations using app theme
+  const getChartConfig = useCallback((colorScheme = 'primary') => {
+    const colorSchemes = {
+      primary: {
+        from: colors.primary,
+        to: colors.primaryLight,
+        accent: colors.primary,
+      },
+      success: {
+        from: colors.success,
+        to: colors.positive,
+        accent: colors.success,
+      },
+      warning: {
+        from: colors.warning,
+        to: '#d97706',
+        accent: colors.warning,
+      },
+      info: {
+        from: colors.info,
+        to: '#0891b2',
+        accent: colors.info,
+      },
+    };
+
+    const scheme = colorSchemes[colorScheme] || colorSchemes.primary;
+
+    return {
+      backgroundColor: colors.surface,
+      backgroundGradientFrom: colors.surface,
+      backgroundGradientTo: colors.surfaceSecondary,
+      backgroundGradientFromOpacity: 1,
+      backgroundGradientToOpacity: 1,
+      decimalPlaces: 2,
+      color: (opacity = 1) => `rgba(91, 155, 253, ${opacity})`,
+      labelColor: (opacity = 1) => {
+        const rgb = colors.text === '#f1f5f9' ? '241, 245, 249' : '31, 41, 55';
+        return `rgba(${rgb}, ${opacity})`;
+      },
+      style: {
+        borderRadius: 16,
+      },
+      propsForBackgroundLines: {
+        strokeDasharray: '',
+        stroke: colors.border,
+        strokeWidth: 1,
+      },
+      propsForLabels: {
+        fontSize: 9,
+        fontWeight: '600',
+      },
+      propsForDots: {
+        r: '5',
+        strokeWidth: '2',
+        stroke: scheme.accent,
+      },
+      fillShadowGradient: scheme.accent,
+      fillShadowGradientOpacity: 0.3,
+      barPercentage: 0.6,
+    };
+  }, [colors]);
+
+  // Render Performance Overview with Progress Circles
+  const renderPerformanceOverview = () => {
+    if (!chartData) return null;
+
+    return (
+      <View style={[styles.modernChartContainer, { backgroundColor: colors.surface }]}>
+        <LinearGradient
+          colors={[colors.primary, colors.primaryLight]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientHeader}
+        >
+          <Ionicons name="analytics" size={24} color={colors.text} />
+          <Text style={[styles.modernChartTitle, { color: colors.text }]}>Performance Overview</Text>
+        </LinearGradient>
+
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          style={styles.performanceScroll}
+          contentContainerStyle={styles.performanceScrollContent}
+        >
+          {selectedData.map(({ symbol, row }, index) => {
+            if (!row) return null;
+            
+            const weeklyReturn = row.weeklyReturn || 0;
+            const monthlyReturn = row.monthlyReturn || 0;
+            const yearlyReturn = row.yearlyReturn || 0;
+            const isLastCard = index === selectedData.length - 1;
+
+            return (
+              <View 
+                key={symbol} 
+                style={[
+                  styles.performanceCard, 
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  isLastCard && styles.performanceCardLast
+                ]}
+              >
+                <View style={styles.performanceHeader}>
+                  <View style={[styles.etfBadge, { backgroundColor: chartData.colorsList[index] }]}>
+                    <Text style={[styles.etfBadgeText, { color: colors.text }]}>{getDisplaySymbol(symbol)}</Text>
+                  </View>
+                  <Text style={[styles.performancePrice, { color: colors.text }]}>
+                    ₹{row.lastClosePrice?.toFixed(2) || '—'}
+                  </Text>
+                </View>
+
+                <View style={styles.returnsGrid}>
+                  <View style={styles.returnItem}>
+                    <Text style={[styles.returnPeriod, { color: colors.textSecondary }]}>1W</Text>
+                    <Text style={[
+                      styles.returnValue,
+                      { color: weeklyReturn >= 0 ? colors.positive : colors.negative }
+                    ]}>
+                      {weeklyReturn >= 0 ? '+' : ''}{weeklyReturn?.toFixed(2)}%
+                    </Text>
+                  </View>
+                  <View style={styles.returnItem}>
+                    <Text style={[styles.returnPeriod, { color: colors.textSecondary }]}>1M</Text>
+                    <Text style={[
+                      styles.returnValue,
+                      { color: monthlyReturn >= 0 ? colors.positive : colors.negative }
+                    ]}>
+                      {monthlyReturn >= 0 ? '+' : ''}{monthlyReturn?.toFixed(2)}%
+                    </Text>
+                  </View>
+                  <View style={styles.returnItem}>
+                    <Text style={[styles.returnPeriod, { color: colors.textSecondary }]}>1Y</Text>
+                    <Text style={[
+                      styles.returnValue,
+                      { color: yearlyReturn >= 0 ? colors.positive : colors.negative }
+                    ]}>
+                      {yearlyReturn >= 0 ? '+' : ''}{yearlyReturn?.toFixed(2)}%
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={[styles.rsiIndicator, { borderTopColor: colors.border }]}>
+                  <Text style={[styles.rsiLabel, { color: colors.textSecondary }]}>RSI (Daily)</Text>
+                  <View style={[styles.rsiBar, { backgroundColor: colors.surfaceSecondary }]}>
+                    <View style={[styles.rsiBarFill, { 
+                      width: `${row.dailyRSI || 0}%`,
+                      backgroundColor: row.dailyRSI > 70 ? colors.rsiOverbought : row.dailyRSI < 30 ? colors.rsiOversold : colors.warning
+                    }]} />
+                  </View>
+                  <Text style={[styles.rsiValue, { color: colors.text }]}>
+                    {row.dailyRSI?.toFixed(0) || '—'}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // Render Returns Comparison with Line Chart
+  const renderReturnsChart = () => {
+    if (!chartData) return null;
+
+    return (
+      <View style={[styles.modernChartContainer, { backgroundColor: colors.surface }]}>
+        <LinearGradient
+          colors={[colors.success, colors.positive]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientHeader}
+        >
+          <Ionicons name="trending-up" size={24} color={colors.text} />
+          <Text style={[styles.modernChartTitle, { color: colors.text }]}>Returns Comparison</Text>
+        </LinearGradient>
+
+        <View style={[styles.chartWrapper, { backgroundColor: colors.surface }]}>
+          <View style={[styles.periodTabs, { backgroundColor: colors.surfaceSecondary }]}>
+            {[
+              { key: 'weekly', label: '1W', color: colors.success },
+              { key: 'monthly', label: '1M', color: colors.primary },
+              { key: 'yearly', label: '1Y', color: colors.warning },
+              { key: 'twoYear', label: '2Y', color: colors.info },
+            ].map((period, idx) => (
+              <View key={period.key} style={styles.periodTab}>
+                <View style={[styles.periodIndicator, { backgroundColor: period.color }]} />
+                <Text style={[styles.periodLabel, { color: colors.text }]}>
+                  {period.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.chartContainer}>
+            <LineChart
+              data={{
+                labels: chartData.labels,
+                datasets: [
+                  {
+                    data: chartData.returnsData.weekly,
+                    color: (opacity = 1) => `rgba(34, 197, 94, ${opacity})`,
+                    strokeWidth: 3,
+                  },
+                  {
+                    data: chartData.returnsData.monthly,
+                    color: (opacity = 1) => `rgba(91, 155, 253, ${opacity})`,
+                    strokeWidth: 3,
+                  },
+                  {
+                    data: chartData.returnsData.yearly,
+                    color: (opacity = 1) => `rgba(245, 158, 11, ${opacity})`,
+                    strokeWidth: 3,
+                  },
+                  {
+                    data: chartData.returnsData.twoYear,
+                    color: (opacity = 1) => `rgba(6, 182, 212, ${opacity})`,
+                    strokeWidth: 3,
+                  },
+                ],
+                legend: ['1W', '1M', '1Y', '2Y'],
+              }}
+              width={screenWidth - 80}
+              height={280}
+              yAxisSuffix="%"
+              chartConfig={getChartConfig('success')}
+              bezier
+              style={styles.modernChart}
+              withInnerLines={true}
+              withOuterLines={true}
+              withVerticalLines={false}
+              withHorizontalLines={true}
+              withShadow={false}
+              withDots={true}
+              fromZero
+              segments={5}
+            />
+          </View>
+
+          <View style={[styles.chartInsight, { backgroundColor: colors.surfaceSecondary }]}>
+            <Ionicons name="information-circle" size={16} color={colors.primary} />
+            <Text style={[styles.insightText, { color: colors.textSecondary }]}>
+              Track performance across multiple time periods
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  // Render RSI Comparison with Line Chart
+  const renderRSIChart = () => {
+    if (!chartData) return null;
+
+    return (
+      <View style={[styles.modernChartContainer, { backgroundColor: colors.surface }]}>
+        <LinearGradient
+          colors={[colors.warning, '#d97706']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientHeader}
+        >
+          <Ionicons name="pulse" size={24} color={colors.text} />
+          <Text style={[styles.modernChartTitle, { color: colors.text }]}>RSI Indicators</Text>
+        </LinearGradient>
+
+        <View style={[styles.chartWrapper, { backgroundColor: colors.surface }]}>
+          <View style={[styles.rsiLegend, { backgroundColor: colors.surfaceSecondary }]}>
+            <View style={styles.rsiZone}>
+              <View style={[styles.rsiZoneIndicator, { backgroundColor: colors.rsiOverbought }]} />
+              <Text style={[styles.rsiZoneText, { color: colors.text }]}>Overbought (70+)</Text>
+            </View>
+            <View style={styles.rsiZone}>
+              <View style={[styles.rsiZoneIndicator, { backgroundColor: colors.rsiOversold }]} />
+              <Text style={[styles.rsiZoneText, { color: colors.text }]}>Oversold (&lt;30)</Text>
+            </View>
+          </View>
+
+          <View style={styles.chartContainer}>
+            <LineChart
+              data={{
+                labels: chartData.labels,
+                datasets: [
+                  {
+                    data: chartData.rsiData.daily,
+                    color: (opacity = 1) => `rgba(34, 197, 94, ${opacity})`,
+                    strokeWidth: 3,
+                  },
+                  {
+                    data: chartData.rsiData.weekly,
+                    color: (opacity = 1) => `rgba(245, 158, 11, ${opacity})`,
+                    strokeWidth: 3,
+                  },
+                  {
+                    data: chartData.rsiData.monthly,
+                    color: (opacity = 1) => `rgba(91, 155, 253, ${opacity})`,
+                    strokeWidth: 3,
+                  },
+                ],
+                legend: ['Daily', 'Weekly', 'Monthly'],
+              }}
+              width={screenWidth - 80}
+              height={280}
+              chartConfig={getChartConfig('warning')}
+              bezier
+              style={styles.modernChart}
+              withInnerLines={true}
+              withOuterLines={true}
+              withVerticalLines={false}
+              withHorizontalLines={true}
+              withShadow={false}
+              withDots={true}
+              fromZero
+              yAxisLabel=""
+              segments={4}
+            />
+          </View>
+
+          <View style={[styles.chartInsight, { backgroundColor: colors.surfaceSecondary }]}>
+            <Ionicons name="information-circle" size={16} color={colors.primary} />
+            <Text style={[styles.insightText, { color: colors.textSecondary }]}>
+              RSI values indicate overbought (&gt;70) or oversold (&lt;30) conditions
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  // Render Price Comparison Chart
+  const renderPriceChart = () => {
+    if (!chartData) return null;
+
+    return (
+      <View style={[styles.modernChartContainer, { backgroundColor: colors.surface }]}>
+        <LinearGradient
+          colors={[colors.primary, colors.primaryLight]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientHeader}
+        >
+          <Ionicons name="cash" size={24} color={colors.text} />
+          <Text style={[styles.modernChartTitle, { color: colors.text }]}>Price Comparison</Text>
+        </LinearGradient>
+
+        <View style={[styles.chartWrapper, { backgroundColor: colors.surface }]}>
+          <View style={styles.chartContainer}>
+            <BarChart
+              data={{
+                labels: chartData.labels,
+                datasets: [
+                  {
+                    data: chartData.priceData,
+                  },
+                ],
+              }}
+              width={screenWidth - 80}
+              height={280}
+              yAxisLabel="₹"
+              chartConfig={getChartConfig('primary')}
+              style={styles.modernChart}
+              showValuesOnTopOfBars
+              fromZero
+              segments={4}
+            />
+          </View>
+          
+          {/* Full labels below chart */}
+          <View style={styles.chartLabelsContainer}>
+            {chartData.fullLabels.map((label, index) => (
+              <View key={index} style={styles.chartLabelItem}>
+                <View style={[styles.chartLabelDot, { backgroundColor: chartData.colorsList[index] }]} />
+                <Text style={[styles.chartLabelText, { color: colors.text }]} numberOfLines={1}>
+                  {label}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={[styles.priceStats, { backgroundColor: colors.surfaceSecondary }]}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Highest</Text>
+              <Text style={[styles.statValue, { color: colors.positive }]}>
+                ₹{Math.max(...chartData.priceData).toFixed(2)}
+              </Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Lowest</Text>
+              <Text style={[styles.statValue, { color: colors.negative }]}>
+                ₹{Math.min(...chartData.priceData).toFixed(2)}
+              </Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Average</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>
+                ₹{(chartData.priceData.reduce((a, b) => a + b, 0) / chartData.priceData.length).toFixed(2)}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  // Render Daily Change % Chart
+  const renderChangeChart = () => {
+    if (!chartData) return null;
+
+    return (
+      <View style={[styles.modernChartContainer, { backgroundColor: colors.surface }]}>
+        <LinearGradient
+          colors={[colors.info, '#0891b2']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientHeader}
+        >
+          <Ionicons name="stats-chart" size={24} color={colors.text} />
+          <Text style={[styles.modernChartTitle, { color: colors.text }]}>Daily Performance</Text>
+        </LinearGradient>
+
+        <View style={[styles.chartWrapper, { backgroundColor: colors.surface }]}>
+          <View style={styles.chartContainer}>
+            <BarChart
+              data={{
+                labels: chartData.labels,
+                datasets: [
+                  {
+                    data: chartData.changeData,
+                  },
+                ],
+              }}
+              width={screenWidth - 80}
+              height={280}
+              yAxisLabel=""
+              yAxisSuffix="%"
+              chartConfig={getChartConfig('info')}
+              style={styles.modernChart}
+              showValuesOnTopOfBars
+              segments={4}
+            />
+          </View>
+          
+          {/* Full labels below chart */}
+          <View style={styles.chartLabelsContainer}>
+            {chartData.fullLabels.map((label, index) => (
+              <View key={index} style={styles.chartLabelItem}>
+                <View style={[styles.chartLabelDot, { backgroundColor: chartData.colorsList[index] }]} />
+                <Text style={[styles.chartLabelText, { color: colors.text }]} numberOfLines={1}>
+                  {label}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.performanceGrid}>
+            {selectedData.map(({ symbol, row }, index) => {
+              if (!row) return null;
+              const change = row.changePercent || 0;
+              const isPositive = change >= 0;
+              
+              return (
+                <View key={symbol} style={[styles.performanceTile, { backgroundColor: colors.surfaceSecondary }]}>
+                  <Text style={[styles.tileSymbol, { color: colors.text }]}>
+                    {getDisplaySymbol(symbol)}
+                  </Text>
+                  <View style={styles.tileChange}>
+                    <Ionicons 
+                      name={isPositive ? 'trending-up' : 'trending-down'} 
+                      size={16} 
+                      color={isPositive ? colors.positive : colors.negative} 
+                    />
+                    <Text style={[
+                      styles.tileChangeValue,
+                      { color: isPositive ? colors.positive : colors.negative }
+                    ]}>
+                      {isPositive ? '+' : ''}{change.toFixed(2)}%
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  // Render Volume Comparison Chart
+  const renderVolumeChart = () => {
+    if (!chartData) return null;
+
+    // Format volume for display (in millions or thousands)
+    const maxVolume = Math.max(...chartData.volumeData.filter(v => !isNaN(v) && isFinite(v)), 0);
+    let formattedVolume = chartData.volumeData;
+    let suffix = '';
+    
+    if (maxVolume >= 1000000) {
+      formattedVolume = chartData.volumeData.map((vol) => vol / 1000000);
+      suffix = 'M';
+    } else if (maxVolume >= 1000) {
+      formattedVolume = chartData.volumeData.map((vol) => vol / 1000);
+      suffix = 'K';
+    }
+
+    return (
+      <View style={[styles.modernChartContainer, { backgroundColor: colors.surface }]}>
+        <LinearGradient
+          colors={[colors.warning, '#d97706']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientHeader}
+        >
+          <Ionicons name="bar-chart" size={24} color={colors.text} />
+          <Text style={[styles.modernChartTitle, { color: colors.text }]}>Trading Volume</Text>
+        </LinearGradient>
+
+        <View style={[styles.chartWrapper, { backgroundColor: colors.surface }]}>
+          <View style={styles.chartContainer}>
+            <BarChart
+              data={{
+                labels: chartData.labels,
+                datasets: [
+                  {
+                    data: formattedVolume,
+                  },
+                ],
+              }}
+              width={screenWidth - 80}
+              height={280}
+              yAxisLabel=""
+              yAxisSuffix={suffix}
+              chartConfig={getChartConfig('warning')}
+              style={styles.modernChart}
+              showValuesOnTopOfBars
+              fromZero
+              segments={4}
+            />
+          </View>
+          
+          {/* Full labels below chart */}
+          <View style={styles.chartLabelsContainer}>
+            {chartData.fullLabels.map((label, index) => (
+              <View key={index} style={styles.chartLabelItem}>
+                <View style={[styles.chartLabelDot, { backgroundColor: chartData.colorsList[index] }]} />
+                <Text style={[styles.chartLabelText, { color: colors.text }]} numberOfLines={1}>
+                  {label}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={[styles.chartInsight, { backgroundColor: colors.surfaceSecondary }]}>
+            <Ionicons name="information-circle" size={16} color={colors.primary} />
+            <Text style={[styles.insightText, { color: colors.textSecondary }]}>
+              Higher volume indicates stronger market interest and liquidity
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  // Render all graphs
+  const renderGraphs = () => {
+    if (selected.length === 0) return null;
+
+    return (
+      <ScrollView 
+        style={styles.graphsContainer}
+        showsVerticalScrollIndicator={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => fetchData(true)}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        {renderPerformanceOverview()}
+        {renderReturnsChart()}
+        {renderChangeChart()}
+        {renderPriceChart()}
+        {renderRSIChart()}
+        {renderVolumeChart()}
+        
+        <View style={styles.graphFooter}>
+          <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+            Swipe to explore all visualizations
+          </Text>
+        </View>
+      </ScrollView>
+    );
+  };
+
   // Create a Set for O(1) lookup instead of O(n) with array.includes()
   const selectedSet = useMemo(() => new Set(selected), [selected]);
 
@@ -525,7 +1176,33 @@ const CompareScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Header title="Compare ETFs" />
+      <Header 
+        title="Compare ETFs" 
+        rightButton={
+          selected.length > 0 ? (
+            <View style={[styles.headerToggle, { backgroundColor: colors.surfaceSecondary }]}>
+              <Ionicons 
+                name="grid-outline" 
+                size={18} 
+                color={viewMode === 'table' ? colors.primary : colors.textSecondary} 
+              />
+              <Switch
+                value={viewMode === 'graph'}
+                onValueChange={(value) => setViewMode(value ? 'graph' : 'table')}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor="#ffffff"
+                ios_backgroundColor={colors.border}
+                style={styles.headerSwitch}
+              />
+              <Ionicons 
+                name="bar-chart-outline" 
+                size={18} 
+                color={viewMode === 'graph' ? colors.primary : colors.textSecondary} 
+              />
+            </View>
+          ) : null
+        }
+      />
       
       <View style={styles.content}>
         {/* Compare button and selected ETFs info */}
@@ -551,25 +1228,27 @@ const CompareScreen = () => {
                 Comparing {selected.length} ETF{selected.length > 1 ? 's' : ''}
               </Text>
               <TouchableOpacity
-                style={[styles.editButton, { backgroundColor: colors.surfaceSecondary }]}
+                style={[styles.editButton, { backgroundColor: colors.primary }]}
                 onPress={handleCompare}
               >
-                <Ionicons name="create-outline" size={16} color={colors.primary} />
-                <Text style={[styles.editButtonText, { color: colors.primary }]}>Edit</Text>
+                <Ionicons name="create-outline" size={16} color="#ffffff" />
+                <Text style={[styles.editButtonText, { color: '#ffffff' }]}>Edit</Text>
               </TouchableOpacity>
             </View>
+            
             <TouchableOpacity
               style={[styles.clearSelectedButton, { backgroundColor: colors.surfaceSecondary }]}
               onPress={onClear}
             >
-              <Ionicons name="close-circle-outline" size={16} color={colors.textSecondary} />
+              <Ionicons name="close-circle-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.clearSelectedText, { color: colors.textSecondary }]}>Clear All</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* Comparison table */}
+        {/* Comparison table or graphs */}
         {selected.length > 0 && (
+          viewMode === 'table' ? (
           <View style={[styles.compareTableSection, { backgroundColor: colors.surface }]}>
             <View style={styles.tableContainer}>
               {/* Fixed left column with ETF symbols */}
@@ -711,6 +1390,9 @@ const CompareScreen = () => {
               </ScrollView>
             </View>
           </View>
+          ) : (
+            renderGraphs()
+          )
         )}
       </View>
 
@@ -1162,11 +1844,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  headerToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  headerSwitch: {
+    transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }],
+  },
   selectedHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -1174,10 +1868,11 @@ const styles = StyleSheet.create({
   selectedInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
+    flex: 1,
   },
   selectedCount: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   editButton: {
@@ -1185,23 +1880,290 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
+    borderRadius: 8,
     gap: 4,
   },
   editButtonText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   clearSelectedButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
+    borderRadius: 8,
     gap: 4,
   },
   clearSelectedText: {
     fontSize: 14,
+  },
+  graphsContainer: {
+    flex: 1,
+    paddingBottom: 16,
+  },
+  graphFooter: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 13,
+    fontStyle: 'italic',
+  },
+  // Modern Chart Styles
+  modernChartContainer: {
+    marginHorizontal: 16,
+    marginVertical: 12,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  gradientHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    gap: 12,
+  },
+  modernChartTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  chartWrapper: {
+    padding: 20,
+    paddingBottom: 16,
+  },
+  chartContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modernChart: {
+    marginVertical: 8,
+    borderRadius: 16,
+  },
+  chartLabelsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+    paddingHorizontal: 8,
+    gap: 8,
+  },
+  chartLabelItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: 'rgba(91, 155, 253, 0.1)',
+    gap: 6,
+    minWidth: '28%',
+    maxWidth: '48%',
+  },
+  chartLabelDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  chartLabelText: {
+    fontSize: 11,
+    fontWeight: '600',
+    flex: 1,
+  },
+  chartInsight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  insightText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  // Performance Overview Styles
+  performanceScroll: {
+    paddingVertical: 16,
+  },
+  performanceScrollContent: {
+    paddingHorizontal: 16,
+    paddingRight: 24,
+  },
+  performanceCard: {
+    width: 200,
+    borderRadius: 16,
+    padding: 16,
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+  },
+  performanceCardLast: {
+    marginRight: 0,
+  },
+  performanceHeader: {
+    marginBottom: 16,
+  },
+  etfBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  etfBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  performancePrice: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  returnsGrid: {
+    marginBottom: 16,
+  },
+  returnItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  returnPeriod: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  returnValue: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  rsiIndicator: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  rsiLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  rsiBar: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  rsiBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  rsiValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'right',
+  },
+  // Period Tabs
+  periodTabs: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  periodTab: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  periodIndicator: {
+    width: 24,
+    height: 4,
+    borderRadius: 2,
+  },
+  periodLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  // RSI Legend
+  rsiLegend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 20,
+    marginBottom: 16,
+    padding: 12,
+    borderRadius: 12,
+  },
+  rsiZone: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rsiZoneIndicator: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+  },
+  rsiZoneText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  // Price Stats
+  priceStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
+    padding: 16,
+    borderRadius: 12,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  statDivider: {
+    width: 1,
+    height: '100%',
+  },
+  // Performance Grid
+  performanceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    gap: 12,
+  },
+  performanceTile: {
+    flex: 1,
+    minWidth: '45%',
+    borderRadius: 12,
+    padding: 12,
+  },
+  tileSymbol: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  tileChange: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  tileChangeValue: {
+    fontSize: 15,
+    fontWeight: '700',
   },
   modalOverlay: {
     flex: 1,
