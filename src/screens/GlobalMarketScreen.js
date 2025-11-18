@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
   FlatList,
   TouchableOpacity,
   ScrollView,
+  Animated,
 } from 'react-native';
 import Text from '../components/CustomText';
 import { GLOBAL_MARKETS_API_URL, parseNumber } from '../utils/helpers';
@@ -19,6 +20,7 @@ const GlobalMarketScreen = () => {
   const [allGlobalMarkets, setAllGlobalMarkets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRegion, setSelectedRegion] = useState('all');
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   // Region filter configurations
   const REGIONS = [
@@ -31,6 +33,15 @@ const GlobalMarketScreen = () => {
 
   useEffect(() => {
     fetchGlobalMarketData();
+  }, []);
+
+  // Update current time every minute to refresh market status
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
   }, []);
 
   // Filter global markets by region
@@ -211,6 +222,85 @@ const GlobalMarketScreen = () => {
     return '🌍';
   };
 
+  // Helper function to check if a market is currently open
+  const isMarketOpen = (region) => {
+    const now = currentTime;
+    const utcHour = now.getUTCHours();
+    const utcDay = now.getUTCDay(); // 0 = Sunday, 6 = Saturday
+    
+    // Markets are closed on weekends
+    if (utcDay === 0 || utcDay === 6) {
+      return false;
+    }
+    
+    // Convert UTC hour to approximate market hours
+    // Market hours are approximate and vary by exchange
+    switch (region) {
+      case 'asia-pac':
+        // Asia-Pacific markets: 00:00-08:00 UTC (Tokyo 9:00-15:00 JST, Hong Kong 9:30-16:00 HKT, etc.)
+        // Extended range to cover different timezones
+        return utcHour >= 0 && utcHour < 9;
+      
+      case 'europe':
+        // European markets: 07:00-16:00 UTC (London 8:00-16:30 GMT, Frankfurt 9:00-17:30 CET)
+        return utcHour >= 7 && utcHour < 16;
+      
+      case 'north-am':
+        // North American markets: 13:30-20:00 UTC (NYSE/NASDAQ 9:30-16:00 EST, TSX 9:30-16:00 EST)
+        return utcHour >= 13 && utcHour < 21;
+      
+      case 'south-am':
+        // South American markets: 13:00-20:00 UTC (Brazil B3 10:00-17:00 BRT)
+        return utcHour >= 13 && utcHour < 21;
+      
+      default:
+        return false;
+    }
+  };
+
+  // Blinking Dot Component
+  const BlinkingDot = ({ isOpen, color, borderColor }) => {
+    const opacity = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+      if (isOpen) {
+        const blinkAnimation = Animated.loop(
+          Animated.sequence([
+            Animated.timing(opacity, {
+              toValue: 0.3,
+              duration: 800,
+              useNativeDriver: true,
+            }),
+            Animated.timing(opacity, {
+              toValue: 1,
+              duration: 800,
+              useNativeDriver: true,
+            }),
+          ])
+        );
+        blinkAnimation.start();
+        return () => blinkAnimation.stop();
+      } else {
+        opacity.setValue(0.3); // Dim when closed
+      }
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    return (
+      <Animated.View
+        style={[
+          styles.blinkingDot,
+          {
+            backgroundColor: color || '#10b981',
+            borderColor: borderColor || '#fff',
+            opacity: opacity,
+          },
+        ]}
+      />
+    );
+  };
+
   const getPerformanceValue = (sector) => {
     return sector.performance?.changePercent;
   };
@@ -270,6 +360,7 @@ const GlobalMarketScreen = () => {
     
     const isPositive = value >= 0;
     const displayValue = value.toFixed(1);
+    const marketIsOpen = isMarketOpen(sector.region);
 
     return (
       <TouchableOpacity
@@ -281,7 +372,11 @@ const GlobalMarketScreen = () => {
         ]}
         disabled={true}
       >
-        <Text style={styles.tileIcon}>{sector.icon}</Text>
+        <BlinkingDot isOpen={marketIsOpen} color={colors.positive} borderColor={colors.surface} />
+        <View style={styles.iconContainer}>
+          <Text style={styles.tileIcon}>{sector.icon}</Text>
+          
+        </View>
         <Text style={[styles.tileName, { color: colors.text }]} numberOfLines={2}>
           {sector.name}
         </Text>
@@ -411,9 +506,28 @@ const styles = StyleSheet.create({
     minHeight: 80,
     justifyContent: 'center',
   },
+  iconContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
   tileIcon: {
     fontSize: 18,
-    marginBottom: 4,
+  },
+  blinkingDot: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 2,
   },
   tileName: {
     fontSize: 11,
