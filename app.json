@@ -2,7 +2,7 @@
   "expo": {
     "name": "ETF Screener",
     "slug": "indian-etf-screener",
-    "version": "3.0.0",
+    "version": "3.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -17,11 +17,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.etfscreener.indianetf",
-      "buildNumber": "20"
+      "buildNumber": "22"
     },
     "android": {
       "package": "com.etfscreener.indianetf",
-      "versionCode": 20,
+      "versionCode": 22,
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE",
