@@ -10,7 +10,6 @@ import {
 import Text from '../components/CustomText';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { cacheUtils } from '../utils/cache';
 import { SUMMARY_API_URL, PRICES_API_URL, parseNumber, formatters } from '../utils/helpers';
 import { getETFDescription, getETFCategory } from '../data/etfDescriptions';
 import { getDisplaySymbol } from '../utils/symbolUtils';
@@ -45,54 +44,34 @@ const ETFDetailScreen = () => {
       setIsLoading(true);
       setError('');
 
-      // Check for cached data first
-      const cachedData = await cacheUtils.getCachedData();
+      // Fetch data from backend
+      const [summaryResponse, pricesResponse] = await Promise.all([
+        fetch(SUMMARY_API_URL),
+        fetch(PRICES_API_URL)
+      ]);
       
-      let summaryData;
-      if (cachedData) {
-        summaryData = cachedData;
-      } else {
-        const response = await fetch(SUMMARY_API_URL);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        summaryData = await response.json();
-        await cacheUtils.setCachedData(summaryData);
+      if (!summaryResponse.ok) {
+        throw new Error(`HTTP error! status: ${summaryResponse.status}`);
       }
       
-      // Get prices data from cache or fetch
-      let pricesData = {};
-      const cachedPrices = await cacheUtils.getCachedPrices();
+      const summaryData = await summaryResponse.json();
       
-      if (cachedPrices && (await cacheUtils.isPricesCacheValid())) {
-        pricesData = cachedPrices;
-      } else {
-        try {
-          const pricesResponse = await fetch(PRICES_API_URL);
-          if (pricesResponse.ok) {
-            const pricesArray = await pricesResponse.json();
-            pricesData = pricesArray.reduce((acc, item) => {
-              if (item.key) {
-                acc[item.key] = {
-                  currentPrice: item.currentPrice,
-                  changePercent: item.changePercent,
-                  change: item.change,
-                  volume: item.volume,
-                  previousClose: item.previousClose
-                };
-              }
-              return acc;
-            }, {});
-            
-            if (Object.keys(pricesData).length > 0) {
-              await cacheUtils.setCachedPrices(pricesData);
-            }
+      // Get prices data
+      let pricesData = {};
+      if (pricesResponse.ok) {
+        const pricesArray = await pricesResponse.json();
+        pricesData = pricesArray.reduce((acc, item) => {
+          if (item.key) {
+            acc[item.key] = {
+              currentPrice: item.currentPrice,
+              changePercent: item.changePercent,
+              change: item.change,
+              volume: item.volume,
+              previousClose: item.previousClose
+            };
           }
-        } catch (error) {
-          console.warn('Failed to fetch prices for ETF detail:', error);
-        }
+          return acc;
+        }, {});
       }
       
       const etf = summaryData.find(item => item.symbol === symbol);

@@ -16,7 +16,6 @@ import Text from '../components/CustomText';
 import TextInput from '../components/CustomTextInput';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { cacheUtils } from '../utils/cache';
 import { SUMMARY_API_URL, PRICES_API_URL, parseNumber, formatters, renderDownFromHigh } from '../utils/helpers';
 import { getDisplaySymbol, getFullSymbol } from '../utils/symbolUtils';
 import { getETFCategory } from '../data/etfDescriptions';
@@ -196,34 +195,25 @@ const CompareScreen = () => {
       }
       setErrorMessage('');
 
-      // Load both summary and prices data together to avoid race conditions
-      let summaryData = await cacheUtils.getCachedData();
-      let pricesData = await cacheUtils.getCachedPrices();
-
-      // If no summary cached, fetch it
-      if (!summaryData) {
-        try {
-          const resp = await fetch(SUMMARY_API_URL, { 
-            method: 'GET', 
-            headers: { 'Accept': 'application/json' }, 
-            mode: 'cors' 
-          });
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-          summaryData = await resp.json();
-          await cacheUtils.setCachedData(summaryData);
-        } catch (err) {
-          throw err;
-        }
-      }
-
-      // Check if prices cache is valid, if not fetch fresh prices
-      const isPricesCacheValid = await cacheUtils.isPricesCacheValid();
-      if (!pricesData || !isPricesCacheValid) {
-        try {
-          const resp = await fetch(PRICES_API_URL);
-          if (resp.ok) {
-            const pricesArray = await resp.json();
-            const freshPricesData = pricesArray.reduce((acc, item) => {
+      // Fetch data from backend
+      const [summaryResult, pricesResult] = await Promise.allSettled([
+        fetch(SUMMARY_API_URL, { 
+          method: 'GET', 
+          headers: { 'Accept': 'application/json' }, 
+          mode: 'cors' 
+        })
+          .then(resp => {
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+            return resp.json();
+          }),
+        fetch(PRICES_API_URL)
+          .then(resp => {
+            if (!resp.ok) return null;
+            return resp.json();
+          })
+          .then(pricesArray => {
+            if (!pricesArray) return {};
+            return pricesArray.reduce((acc, item) => {
               const symbol = item.key;
               if (symbol) {
                 acc[symbol] = {
@@ -236,24 +226,22 @@ const CompareScreen = () => {
               }
               return acc;
             }, {});
-            if (Object.keys(freshPricesData).length > 0) {
-              pricesData = freshPricesData;
-              await cacheUtils.setCachedPrices(pricesData);
-            }
-          }
-        } catch (error) {
-          console.warn('Failed to fetch prices, using cached data if available:', error);
-        }
-      }
+          })
+          .catch(error => {
+            console.warn('Failed to fetch prices:', error);
+            return {};
+          })
+      ]);
 
-      // Only render when we have both summary and prices data
-      if (summaryData && pricesData) {
+      const summaryData = summaryResult.status === 'fulfilled' ? summaryResult.value : null;
+      const pricesData = pricesResult.status === 'fulfilled' ? pricesResult.value : {};
+
+      // Only render when we have summary data
+      if (summaryData) {
         setPricesData(pricesData);
         setData(processRawData(summaryData, pricesData));
-      } else if (summaryData) {
-        // Fallback: render with summary only if prices fail
-        setPricesData(pricesData ?? {});
-        setData(processRawData(summaryData, pricesData ?? {}));
+      } else {
+        throw new Error('Failed to fetch summary data');
       }
     } catch (error) {
       setErrorMessage(error.message || 'Failed to fetch data');
